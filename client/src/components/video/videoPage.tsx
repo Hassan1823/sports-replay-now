@@ -1240,6 +1240,7 @@ export function VideoPageMain() {
                           <video
                             ref={videoRef}
                             controls
+                            autoPlay
                             className="w-full h-full rounded-lg"
                             poster={videoThumbnail}
                             onTimeUpdate={(e) => {
