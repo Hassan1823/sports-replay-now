@@ -114,6 +114,7 @@ export function VideoPageMain() {
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  console.log("🚀 ~ VideoPageMain ~ currentPlaybackTime:", currentPlaybackTime);
   const [seasonLoading, setSeasonLoading] = useState(false);
 
   const [renamingItem, setRenamingItem] = useState<{
@@ -143,50 +144,6 @@ export function VideoPageMain() {
   // GET VIDEO DETAILS
 
   // Polling logic for video readiness
-  // const pollVideoReady = async (
-  //   videoId: string,
-  //   maxAttempts = 15,
-  //   interval = 3000
-  // ) => {
-  //   let attempts = 0;
-  //   setFetchingVideoDetails(true);
-  //   while (attempts < maxAttempts) {
-  //     try {
-  //       const res = await getVideoDetails(videoId);
-  //       if (res.success && res.data) {
-  //         const videoDetails = res.data as VideoDetails;
-  //         setSelectedVideoDetails(videoDetails);
-  //         setVideoThumbnail(
-  //           videoDetails.thumbnailPath
-  //             ? `${
-  //                 process.env.PEERTUBE_VIDEO_URL ||
-  //                 "https://video.visiononline.games"
-  //               }${videoDetails.thumbnailPath}`
-  //             : ""
-  //         );
-  //         // If streamingPlaylists are available, video is ready
-  //         if (
-  //           videoDetails.streamingPlaylists &&
-  //           videoDetails.streamingPlaylists.length > 0
-  //         ) {
-  //           setFetchingVideoDetails(false);
-  //           return;
-  //         }
-  //       } else {
-  //         setSelectedVideoDetails(null);
-  //       }
-  //     } catch (err) {
-  //       console.log("🚀 ~ VideoPageMain ~ err:", err);
-  //       setSelectedVideoDetails(null);
-  //     }
-  //     attempts++;
-  //     // Wait before next poll
-  //     await new Promise((resolve) => setTimeout(resolve, interval));
-  //   }
-  //   setFetchingVideoDetails(false);
-  //   toast.error("Video is still processing. Please try again later.");
-  // };
-
   const pollVideoReady = async (
     videoId: string,
     maxAttempts = 15,
@@ -523,66 +480,6 @@ export function VideoPageMain() {
   };
 
   // Actually delete the game after confirmation
-  // const confirmDeleteGame = async () => {
-  //   if (!pendingDelete) return;
-  //   const { seasonId, gameId } = pendingDelete;
-  //   try {
-  //     setSeasonLoading(true);
-  //     const res = await deleteGame(gameId);
-  //     if (res.success) {
-  //       // Find the season being updated
-  //       const updatedSeasons = seasons.map((season) =>
-  //         season.id === seasonId
-  //           ? {
-  //               ...season,
-  //               games: season.games.filter((game) => game.id !== gameId),
-  //             }
-  //           : season
-  //       );
-  //       setSeasons(updatedSeasons);
-
-  //       // Find the updated season and its games after deletion
-  //       const updatedSeason = updatedSeasons.find((s) => s.id === seasonId);
-  //       const remainingGames = updatedSeason?.games || [];
-
-  //       if (remainingGames.length > 0) {
-  //         // Set the most recent (last) game as selected
-  //         const recentGame = remainingGames[remainingGames.length - 1];
-  //         setSelectedGameId(recentGame.id);
-
-  //         // Fetch videos for the recent game and select the first one if available
-  //         const videosRes = await getVideosForGame(recentGame.id);
-  //         if (
-  //           videosRes.success &&
-  //           Array.isArray(videosRes.data) &&
-  //           videosRes.data.length > 0
-  //         ) {
-  //           setSelectedVideo(videosRes.data[0]);
-  //           setLibraryVideos(videosRes.data);
-  //           fetchVideoDetails(videosRes.data[0]._id || "");
-  //         } else {
-  //           setSelectedVideo(null);
-  //           setLibraryVideos([]);
-  //         }
-  //       } else {
-  //         // No games left in the season
-  //         setSelectedGameId(null);
-  //         setSelectedVideo(null);
-  //         setLibraryVideos([]);
-  //       }
-  //       toast.success("Game deleted successfully");
-  //     } else {
-  //       toast.error(res.message || "Failed to delete game");
-  //     }
-  //   } catch (err) {
-  //     toast.error("Delete game error: " + err);
-  //   } finally {
-  //     setDeleteLoading(false);
-  //     setSeasonLoading(false);
-  //     setPendingDelete(null);
-  //   }
-  // };
-
   const confirmDeleteGame = async () => {
     if (!pendingDelete) return;
     const { seasonId, gameId } = pendingDelete;
@@ -624,12 +521,12 @@ export function VideoPageMain() {
   };
 
   const shareSeason = (seasonId: string) => {
-    console.log("calling the share button");
-    // const link = `https://example.com/share/${seasonId}`;
-    const link = `${process.env.SHARE_LINK}/${seasonId}`;
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    const link = `${base}/share/${seasonId}`;
     setShareLink(link);
-    navigator.clipboard.writeText(link);
-    toast.success("Copied to clipboard!");
+    navigator.clipboard.writeText(link).then(() => {
+      toast.success("Copied to clipboard!");
+    });
   };
 
   const toggleEditMode = () => {
@@ -641,56 +538,6 @@ export function VideoPageMain() {
   };
 
   // FETCHING VIDEOS
-  // const handleFetchGamesVideos = async (seasonId: string, gameId: string) => {
-  //   setSelectedSeasonId(seasonId);
-  //   setSelectedGameId(gameId);
-
-  //   try {
-  //     setFetchingVideos(true);
-  //     const res = await getVideosForGame(gameId);
-  //     if (res.success) {
-  //       setLibraryVideos(Array.isArray(res.data) ? res.data : []);
-
-  //       // Update the videos in the state for the specific game
-  //       setSeasons((prevSeasons) =>
-  //         prevSeasons.map((season) => {
-  //           if (season.id === seasonId) {
-  //             return {
-  //               ...season,
-  //               games: season.games.map((game) => {
-  //                 if (game.id === gameId) {
-  //                   return {
-  //                     ...game,
-  //                     videos: Array.isArray(res.data) ? res.data : [],
-  //                   };
-  //                 }
-  //                 return game;
-  //               }),
-  //             };
-  //           }
-  //           return season;
-  //         })
-  //       );
-
-  //       // Select the first video if available
-  //       if (Array.isArray(res.data) && res.data.length > 0) {
-  //         setSelectedVideo(res.data[0]);
-  //       } else {
-  //         setSelectedVideo(null);
-  //       }
-  //     } else {
-  //       setLibraryVideos([]);
-  //       setSelectedVideo(null);
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching game videos:", err);
-  //     setLibraryVideos([]);
-  //     setSelectedVideo(null);
-  //   } finally {
-  //     setFetchingVideos(false);
-  //   }
-  // };
-
   // Modified handleFetchGamesVideos - no upload restrictions
   const handleFetchGamesVideos = async (seasonId: string, gameId: string) => {
     // Clear videos first to prevent showing old videos while loading
@@ -767,10 +614,6 @@ export function VideoPageMain() {
         "video/webm",
       ];
       const filtered = filesArr.filter((file) => {
-        if (file.size > 1024 * 1024 * 1024) {
-          toast.error(`File ${file.name} exceeds 1GB limit`);
-          return false;
-        }
         if (!validTypes.includes(file.type)) {
           toast.error(
             `Invalid file type for ${file.name} (MP4, MOV, AVI, MKV, WEBM required)`
@@ -795,132 +638,13 @@ export function VideoPageMain() {
   };
 
   // Track uploading state for each file
-  const [uploadingFiles, setUploadingFiles] = useState<
+  const [uploadingFiles] = useState<
     {
       name: string;
       status: "uploading" | "success" | "error";
       error?: string;
     }[]
   >([]);
-
-  // const handleUploadConfirmation = async (confirmed: boolean) => {
-  //   setUploadConfirmation({ open: false, files: [], muteMap: {} });
-  //   if (!confirmed || !uploadConfirmation.files.length) return;
-  //   if (!selectedGameId) {
-  //     toast.error("No game selected for upload.");
-  //     return;
-  //   }
-  //   setUploadingFiles(
-  //     uploadConfirmation.files.map((file) => ({
-  //       name: file.name,
-  //       status: "uploading",
-  //     }))
-  //   );
-  //   try {
-  //     for (let i = 0; i < uploadConfirmation.files.length; i++) {
-  //       const file = uploadConfirmation.files[i];
-  //       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-  //       const description = nameWithoutExt || "Uploaded via UI";
-  //       const mute = uploadConfirmation.muteMap[file.name] || false;
-  //       try {
-  //         const res = await uploadVideoToGame(
-  //           selectedGameId,
-  //           nameWithoutExt,
-  //           description,
-  //           file,
-  //           mute
-  //         );
-  //         if (res.success) {
-  //           setUploadingFiles((prev) =>
-  //             prev.filter((f) => f.name !== file.name)
-  //           );
-  //           // Refetch videos for the selected game so the new video appears in the list
-  //           if (selectedSeasonId) {
-  //             const gamesRes = await getGamesForSeason(selectedSeasonId);
-  //             let updatedVideos: Video[] = [];
-  //             if (gamesRes.success && Array.isArray(gamesRes.data)) {
-  //               const gamesWithVideos = await Promise.all(
-  //                 gamesRes.data.map(
-  //                   async (game: { _id: string; name: string }) => {
-  //                     const videosRes = await getVideosForGame(game._id);
-  //                     if (
-  //                       game._id === selectedGameId &&
-  //                       videosRes.success &&
-  //                       Array.isArray(videosRes.data)
-  //                     ) {
-  //                       updatedVideos = videosRes.data;
-  //                     }
-  //                     return {
-  //                       id: game._id,
-  //                       name: game.name,
-  //                       videos:
-  //                         videosRes.success && Array.isArray(videosRes.data)
-  //                           ? videosRes.data
-  //                           : [],
-  //                       open: game._id === selectedGameId,
-  //                     };
-  //                   }
-  //                 )
-  //               );
-  //               setSeasons((prevSeasons) =>
-  //                 prevSeasons.map((season) =>
-  //                   season.id === selectedSeasonId
-  //                     ? { ...season, games: gamesWithVideos }
-  //                     : season
-  //                 )
-  //               );
-  //               setLibraryVideos(updatedVideos);
-  //               if (updatedVideos.length > 0) {
-  //                 setSelectedVideo(updatedVideos[0]);
-  //                 await pollVideoReady(updatedVideos[0]._id || "");
-  //               }
-  //             }
-  //           }
-  //           if (i === uploadConfirmation.files.length - 1) {
-  //             toast.success("Batch upload completed");
-  //           }
-  //         } else {
-  //           setUploadingFiles((prev) =>
-  //             prev.map((f) =>
-  //               f.name === file.name
-  //                 ? { ...f, status: "error", error: res.message }
-  //                 : f
-  //             )
-  //           );
-  //           toast.error(res.message || "Upload error");
-  //         }
-  //       } catch (err) {
-  //         setUploadingFiles((prev) =>
-  //           prev.map((f) =>
-  //             f.name === file.name
-  //               ? {
-  //                   ...f,
-  //                   status: "error",
-  //                   error: err instanceof Error ? err.message : String(err),
-  //                 }
-  //               : f
-  //           )
-  //         );
-  //         toast.error(
-  //           "Upload error: " +
-  //             (err instanceof Error ? err.message : String(err))
-  //         );
-  //       }
-  //     }
-  //   } catch (err: unknown) {
-  //     const errorMessage = err instanceof Error ? err.message : String(err);
-  //     toast.error("Batch upload error: " + errorMessage);
-  //     setUploadingFiles((prev) =>
-  //       prev.map((f) => ({
-  //         ...f,
-  //         status: "error",
-  //         error: errorMessage,
-  //       }))
-  //     );
-  //   }
-  // };
-
-  // * Hls.js video player integration
 
   // Add a state to track active uploads per game
   const [activeUploads, setActiveUploads] = useState<{
@@ -1118,7 +842,7 @@ export function VideoPageMain() {
       {/* <div className="flex lg:flex-col flex-row justify-start items-start h-full bg-transparent"> */}
       <div className="flex lg:flex-row flex-col justify-start items-start gap-2 lg:h-full h-auto bg-transparent">
         {/* <div className="w-1/4 h-full border-r p-4"> */}
-        <div className="lg:w-1/4 lg:h-full w-full h-auto border-r p-4">
+        <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent">
           <div className="w-full h-auto flex justify-between items-center gap-2 py-4 px-[0%]">
             <Button
               size={"sm"}
@@ -1172,7 +896,7 @@ export function VideoPageMain() {
                 {seasons.map((season) => (
                   <Card
                     key={season.id}
-                    className="px-0 py-2 my-1 "
+                    className="px-0 py-2 my-1 border border-[#454444]"
                     style={{
                       backgroundColor: "rgb(133, 133, 133)",
                     }}
@@ -1188,9 +912,9 @@ export function VideoPageMain() {
                                 : "ghost"
                             }
                             size="icon"
-                            className={`h-6 w-6 border-2 ${
+                            className={`h-6 w-6 hover:bg-transparent border-2 ${
                               selectedSeasonId === season.id
-                                ? "border-black-900 bg-black-100"
+                                ? "border-[#454444] bg-black-100"
                                 : "border-transparent"
                             }`}
                             onClick={() => {
@@ -1245,7 +969,7 @@ export function VideoPageMain() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-6 w-6 hover:bg-transparent"
                             disabled={loading}
                             onClick={() => shareSeason(season.id)}
                           >
@@ -1311,7 +1035,10 @@ export function VideoPageMain() {
                     {season.open && (
                       <CardContent className="p-0">
                         {season.games.map((game) => (
-                          <div key={game.id} className="border-t">
+                          <div
+                            key={game.id}
+                            className="border-t border-[#454444]"
+                          >
                             <div className="flex items-center justify-between p-1 hover:bg-transparent">
                               <div className="flex items-center space-x-2">
                                 {/* // In the game selection button: */}
@@ -1436,6 +1163,7 @@ export function VideoPageMain() {
                                     onClick={() =>
                                       fileInputRef.current?.click()
                                     }
+                                    className="hover:bg-transparent bg-transparent border-[#454444]"
                                   >
                                     <PlusIcon />
                                     <Input
@@ -1673,8 +1401,8 @@ export function VideoPageMain() {
 
         {/* library section */}
         {/* <div className="w-1/4 border-l p-4 overflow-y-auto"> */}
-        <div className="lg:w-1/4 lg:h-full w-full h-auto border-l p-4 lg:overflow-y-auto">
-          <div className="w-full h-auto flex justify-between items-center gap-2 py-4 px-[0%]">
+        <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
+          <div className="w-full h-auto flex justify-between items-center gap-0 py-4 px-0">
             <Button
               size={"sm"}
               className="text-xs"
@@ -1699,76 +1427,80 @@ export function VideoPageMain() {
               <MenuIcon />
             </Button>
           </div>
-          <h2 className="text-lg font-semibold mb-4">
-            {(() => {
-              const game = seasons
-                .flatMap((season) => season.games)
-                .find((game) => game.id === selectedGameId);
-              return game?.name || "Library";
-            })()}
-          </h2>
-          {fetchingVideos ? (
-            <div className="flex items-center justify-center">
-              <Loading />
-            </div>
-          ) : (
-            <>
-              <ol className="list-none space-y-1">
-                {!libraryVideos || libraryVideos.length === 0 ? (
-                  <>
-                    {uploadingFiles.length > 0 ? null : (
-                      <li className="w-full h-auto flex justify-center items-center">
-                        No videos found
-                      </li>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {libraryVideos?.map((video) => (
-                      <li
-                        key={video._id}
-                        className="px-0 text-[0.85rem] hover:bg-gray-100 rounded cursor-pointer flex justify-between items-center gap-2"
-                        onClick={() => selectVideo(video)}
-                      >
-                        <div className="flex justify-start items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
-                          <Checkbox
-                            checked={selectedVideo?._id === video._id}
-                          />
-                          <span className="truncate block">
-                            {video.title || "no title"}
-                          </span>
-                        </div>
-                        <Button
-                          size={"icon"}
-                          variant={"link"}
-                          onClick={() => showShareModal(video)}
-                        >
-                          <Share2 className="w-8 h-8" />
-                        </Button>
-                      </li>
-                    ))}
-                  </>
-                )}
-              </ol>
-            </>
-          )}
 
-          {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
-            <li
-              key={`upload-${idx}`}
-              className="px-0 text-[0.85rem] text-gray-500 italic flex items-center gap-2"
-            >
-              {file.status === "uploading" ? (
-                <Loading size={16} />
-              ) : file.status === "error" ? (
-                <CircleX className="w-4 h-4 text-red-500" />
-              ) : null}
-              <span className="truncate">
-                {file.name}
-                {file.status === "error" && file.error && ` (${file.error})`}
-              </span>
-            </li>
-          ))}
+          <Card className="border px-2 bg-[#858585]">
+            <h2 className="text-lg font-semibold mb-4 bg-[#858585]">
+              {(() => {
+                const game = seasons
+                  .flatMap((season) => season.games)
+                  .find((game) => game.id === selectedGameId);
+                return game?.name || "Library";
+              })()}
+            </h2>
+            {fetchingVideos ? (
+              <div className="flex items-center justify-center bg-transparent">
+                <Loading />
+              </div>
+            ) : (
+              <>
+                <ol className="list-none space-y-1 ">
+                  {!libraryVideos || libraryVideos.length === 0 ? (
+                    <>
+                      {uploadingFiles.length > 0 ? null : (
+                        <li className="w-full h-auto flex justify-center items-center">
+                          No videos found
+                        </li>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {libraryVideos?.map((video) => (
+                        <li
+                          key={video._id}
+                          className="px-0 text-[0.85rem] hover:bg-[#858585] rounded cursor-pointer flex justify-between items-center gap-2"
+                          onClick={() => selectVideo(video)}
+                        >
+                          <div className="flex justify-start items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
+                            <Checkbox
+                              className="border-[#454444] cursor-pointer"
+                              checked={selectedVideo?._id === video._id}
+                            />
+                            <span className="truncate block">
+                              {video.title || "no title"}
+                            </span>
+                          </div>
+                          <Button
+                            size={"icon"}
+                            variant={"link"}
+                            onClick={() => showShareModal(video)}
+                          >
+                            <Share2 className="w-8 h-8" />
+                          </Button>
+                        </li>
+                      ))}
+                    </>
+                  )}
+                </ol>
+              </>
+            )}
+
+            {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
+              <li
+                key={`upload-${idx}`}
+                className="px-0 text-[0.85rem] text-gray-500 italic flex items-center gap-2"
+              >
+                {file.status === "uploading" ? (
+                  <Loading size={16} />
+                ) : file.status === "error" ? (
+                  <CircleX className="w-4 h-4 text-red-500" />
+                ) : null}
+                <span className="truncate">
+                  {file.name}
+                  {file.status === "error" && file.error && ` (${file.error})`}
+                </span>
+              </li>
+            ))}
+          </Card>
         </div>
       </div>
 
@@ -1895,4 +1627,4 @@ export function VideoPageMain() {
   );
 }
 
-// ******************************************************
+// **************************************
