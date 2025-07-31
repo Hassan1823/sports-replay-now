@@ -288,6 +288,223 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
   }
 });
 
+// * update peertube video
+export const updateVideoFile = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  const videoFile = req.file;
+
+  if (!videoId || !videoFile) {
+    return res.status(400).json({
+      success: false,
+      message: "Video ID and video file are required",
+    });
+  }
+
+  try {
+    // Find the existing video record
+    const existingVideo = await Video.findById(videoId);
+    if (!existingVideo) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Video not found" });
+    }
+
+    // Find PeerTube account
+    const peertubeAccount = await Peertube.findOne({
+      userId: existingVideo.userId,
+    });
+    if (!peertubeAccount?.peertubeChannelId) {
+      return res.status(404).json({
+        success: false,
+        message: "No PeerTube channel linked to this user",
+      });
+    }
+
+    // Get access token
+    const token = await getAccessToken();
+
+    // Delete the old video from PeerTube
+    try {
+      await axios.delete(
+        `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/${existingVideo.peertubeVideoId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error deleting old video from PeerTube:", error);
+      // Continue even if deletion fails (might be already deleted)
+    }
+
+    // Get video duration for the new video
+    const getVideoDuration = (filePath) =>
+      new Promise((resolve, reject) => {
+        ffmpeg.ffprobe(filePath, (err, metadata) => {
+          if (err) return reject(err);
+          if (metadata && metadata.format && metadata.format.duration) {
+            // Format duration as HH:MM:SS
+            const totalSeconds = Math.floor(metadata.format.duration);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const formatted =
+              (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
+              String(minutes).padStart(2, "0") +
+              ":" +
+              String(seconds).padStart(2, "0");
+            resolve(formatted);
+          } else {
+            resolve("");
+          }
+        });
+      });
+
+    let videoDuration = "";
+    try {
+      videoDuration = await getVideoDuration(videoFile.path);
+    } catch (err) {
+      console.error("Error getting video duration:", err);
+      videoDuration = "";
+    }
+
+    // Prepare upload to PeerTube with the same metadata as before
+    const formData = new FormData();
+    formData.append("name", existingVideo.title);
+    formData.append("channelId", peertubeAccount.peertubeChannelId.toString());
+    formData.append("description", existingVideo.description);
+    formData.append("privacy", existingVideo.privacy.toString());
+    formData.append("nsfw", "false");
+    formData.append("commentsEnabled", "true");
+    formData.append("downloadEnabled", "true");
+    formData.append("category", existingVideo.category?.toString() || "1");
+    formData.append("license", existingVideo.license?.toString() || "1");
+    formData.append("language", "en"); // Default language
+
+    if (existingVideo.tags?.length > 0) {
+      existingVideo.tags.forEach((tag) => formData.append("tags[]", tag));
+    }
+
+    formData.append("videofile", fs.createReadStream(videoFile.path), {
+      filename: videoFile.originalname,
+      contentType: videoFile.mimetype,
+      knownLength: fs.statSync(videoFile.path).size,
+    });
+
+    // Upload new video to PeerTube
+    let uploadResponse;
+    try {
+      uploadResponse = await axios.post(
+        `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/upload`,
+        formData,
+        {
+          headers: {
+            ...formData.getHeaders(),
+            Authorization: `Bearer ${token}`,
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+          timeout: 30 * 60 * 1000,
+        }
+      );
+    } catch (error) {
+      console.error("PeerTube upload failed:", error);
+      // Clean up uploaded file
+      if (videoFile?.path) {
+        try {
+          await unlinkAsync(videoFile.path);
+        } catch {}
+      }
+      return res.status(500).json({
+        success: false,
+        message: "PeerTube upload failed",
+        details: error.response?.data || error.message,
+      });
+    }
+
+    // Fetch the new video details from PeerTube
+    let peertubeVideoDetails;
+    try {
+      const detailsRes = await axios.get(
+        `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/${uploadResponse.data.video.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      peertubeVideoDetails = detailsRes.data;
+    } catch (err) {
+      console.error("Error fetching video details:", err);
+      peertubeVideoDetails = uploadResponse.data.video; // fallback
+    }
+
+    // Compose full URLs for previewPath and thumbnailPath
+    const peertubeBaseUrl =
+      process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
+    const previewPath = peertubeVideoDetails.previewPath
+      ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.previewPath
+      : null;
+    const thumbnailPath = peertubeVideoDetails.thumbnailPath
+      ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.thumbnailPath
+      : null;
+
+    // Update video metadata in DB, preserving all fields except the PeerTube-specific ones
+    const updatedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      {
+        peertubeVideoId: uploadResponse.data.video.id,
+        videoShareLink: peertubeVideoDetails.url || "",
+        videoChannel: peertubeVideoDetails.channel.url || "",
+        filePath: uploadResponse.data.video.url,
+        duration: uploadResponse.data.video.duration,
+        videoThumbnail: thumbnailPath || previewPath || "",
+        videoDuration: videoDuration || existingVideo.videoDuration, // Use new duration or keep existing
+        // Keep the original muteVideo status
+        $setOnInsert: { muteVideo: existingVideo.muteVideo },
+      },
+      { new: true }
+    );
+
+    // Clean up uploaded file
+    try {
+      if (videoFile?.path) {
+        await unlinkAsync(videoFile.path);
+      }
+    } catch (cleanupError) {
+      console.error("Error cleaning up files:", cleanupError);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        video: updatedVideo,
+        peertube: peertubeVideoDetails,
+        fullPreviewPath: previewPath,
+        fullThumbnailPath: thumbnailPath,
+      },
+      message: "Video file updated successfully",
+    });
+  } catch (error) {
+    // Clean up files in case of any error
+    try {
+      if (videoFile?.path) {
+        await unlinkAsync(videoFile.path);
+      }
+    } catch (cleanupError) {
+      console.error("Error during cleanup:", cleanupError);
+    }
+
+    console.error("Error in updateVideoFile:", error);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred during video update",
+      error: error.message,
+    });
+  }
+});
+
 // * upload single video to a game folder
 // export const uploadVideoToGame = asyncHandler(async (req, res) => {
 //   const { gameId } = req.params;
@@ -453,6 +670,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
 // ----------------------------
 
 // * upload multiple videos to a game folder
+
 export const uploadMultipleVideosToGame = asyncHandler(async (req, res) => {
   const { gameId } = req.params;
   const {

@@ -115,38 +115,6 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     return () => window.removeEventListener("resize", updateThumbSize);
   }, []);
 
-  // Generate thumbnails at intervals
-  // useEffect(() => {
-  //   if (!videoUrl || !duration) return;
-  //   const captureThumbnails = async () => {
-  //     const thumbs: string[] = [];
-  //     const interval = duration / (THUMB_COUNT - 1);
-  //     const video = document.createElement("video");
-  //     video.crossOrigin = "anonymous";
-  //     video.src = videoUrl;
-  //     await new Promise((resolve) => {
-  //       video.onloadedmetadata = resolve;
-  //     });
-  //     for (let i = 0; i < THUMB_COUNT; i++) {
-  //       const time = Math.min(duration, Math.round(i * interval));
-  //       video.currentTime = time;
-  //       await new Promise((resolve) => {
-  //         video.onseeked = resolve;
-  //       });
-  //       const canvas = document.createElement("canvas");
-  //       canvas.width = thumbSize.width;
-  //       canvas.height = thumbSize.height;
-  //       const ctx = canvas.getContext("2d");
-  //       if (ctx) {
-  //         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  //         thumbs.push(canvas.toDataURL("image/jpeg"));
-  //       }
-  //     }
-  //     setThumbnails(thumbs);
-  //   };
-  //   captureThumbnails();
-  // }, [videoUrl, duration, thumbSize]);
-
   // Touch support for handles
   const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
@@ -222,6 +190,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     window.addEventListener("touchend", onUp as EventListener);
   };
 
+  // trim video
   const handleTrim = async () => {
     if (!videoRef.current || isTrimming) return;
 
@@ -480,3 +449,5 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 };
 
 export default TrimSliderWithThumbnails;
+
+// 888888888888888888888888888888888888

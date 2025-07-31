@@ -11,6 +11,7 @@ import {
   deleteGame,
   getVideosForGame,
   getVideoDetails,
+  updateVideoFile,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -34,10 +35,13 @@ router.delete("/delete-game/:gameId", deleteGame); // DELETE /api/v1/seasons/del
 
 // Video upload to game
 
-router.post("/upload-video/:gameId", singleUpload, uploadVideoToGame); // POST /api/v1/seasons/upload-video/:gameId
+// router.post("/upload-video/:gameId", singleUpload, uploadVideoToGame); // POST /api/v1/seasons/upload-video/:gameId
 
 // Single video upload to game
 router.post("/upload-video/:gameId", singleUpload, uploadVideoToGame); // POST /api/v1/seasons/upload-video/:gameId
+
+// update video upload to game
+router.post("/update-video/:videoId", singleUpload, updateVideoFile); // PUT /api/v1/seasons/upload-video/:gameId
 
 // Multiple video upload to game (batch)
 router.post(

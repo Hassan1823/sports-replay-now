@@ -11,6 +11,7 @@ import {
   getVideosForGame,
   renameGame,
   renameSeasonFolder,
+  updateVideoFile,
   uploadVideoToGame,
 } from "@/app/api/peertube/api";
 import { Button } from "@/components/ui/button";
@@ -836,6 +837,59 @@ export function VideoPageMain() {
     setShareModal(true);
   };
 
+  // * trim video
+  // Add this state to track the video being replaced
+  const [replacingVideo, setReplacingVideo] = useState<{
+    videoId: string;
+    status: "idle" | "uploading" | "success" | "error";
+    error?: string;
+  } | null>(null);
+
+  // Add this function to handle the video replacement
+  const handleReplaceVideo = async (videoId: string, blob: Blob) => {
+    if (!videoId || !blob) return;
+
+    setReplacingVideo({
+      videoId,
+      status: "uploading",
+    });
+
+    try {
+      // Convert Blob to File
+      const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
+        type: "video/mp4",
+      });
+
+      // Call the updateVideoFile API
+      const response = await updateVideoFile(videoId, file);
+
+      if (response.success) {
+        // Refresh the video list
+        if (selectedSeasonId && selectedGameId) {
+          await handleFetchGamesVideos(selectedSeasonId, selectedGameId);
+        }
+
+        setReplacingVideo({
+          videoId,
+          status: "success",
+        });
+
+        toast.success("Video successfully replaced with trimmed version");
+      } else {
+        throw new Error(response.message || "Failed to update video");
+      }
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setReplacingVideo({
+        videoId,
+        status: "error",
+        error: errorMessage,
+      });
+      toast.error(`Failed to replace video: ${errorMessage}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="">
@@ -1043,8 +1097,8 @@ export function VideoPageMain() {
                             key={game.id}
                             className="border-t border-[#454444]"
                           >
-                            <div className="flex items-center justify-between p-1 hover:bg-transparent">
-                              <div className="flex items-center space-x-2">
+                            <div className="flex items-center justify-between w-full py-1 px-3 hover:bg-transparent">
+                              <div className="flex items-center space-x-2 flex-1">
                                 {/* // In the game selection button: */}
                                 <Button
                                   variant="ghost"
@@ -1105,21 +1159,62 @@ export function VideoPageMain() {
                                   </span>
                                 )}
                               </div>
-                              {editMode && (
-                                <div className="flex space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() =>
-                                      deleteGameFromSeason(season.id, game.id)
-                                    }
-                                    disabled={loading}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
+                              <div className="flex flex-nowrap justify-center items-center">
+                                <div className="flex flex-nowrap justify-center items-center">
+                                  {/* add video button */}
+                                  {!editMode && game.id === selectedGameId && (
+                                    <div className="flex items-center gap-4">
+                                      <Button
+                                        size={"sm"}
+                                        variant={"outline"}
+                                        disabled={loading}
+                                        onClick={() =>
+                                          fileInputRef.current?.click()
+                                        }
+                                        className="hover:bg-transparent bg-transparent border-[#454444]"
+                                      >
+                                        <PlusIcon />
+                                        <Input
+                                          id="videoFiles"
+                                          ref={fileInputRef}
+                                          type="file"
+                                          accept="video/*"
+                                          multiple
+                                          onChange={handleFileChange}
+                                          className="hidden"
+                                        />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                                <Button
+                                  size={"icon"}
+                                  variant={"link"}
+                                  onClick={() =>
+                                    showShareModal(
+                                      `sharedGame?id=${game.id}` as string
+                                    )
+                                  }
+                                >
+                                  <Share2 className="w-8 h-8" />
+                                </Button>
+                                {editMode && (
+                                  <div className="flex space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() =>
+                                        deleteGameFromSeason(season.id, game.id)
+                                      }
+                                      disabled={loading}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+
                               {/* Delete Game Confirmation Modal */}
                               <Dialog
                                 open={!!pendingDelete}
@@ -1156,46 +1251,6 @@ export function VideoPageMain() {
                                   </DialogFooter>
                                 </DialogContent>
                               </Dialog>
-
-                              <div className="flex flex-nowrap justify-center items-center">
-                                {/* add video button */}
-                                {!editMode && game.id === selectedGameId && (
-                                  <div className="flex items-center gap-4">
-                                    <Button
-                                      size={"sm"}
-                                      variant={"outline"}
-                                      disabled={loading}
-                                      onClick={() =>
-                                        fileInputRef.current?.click()
-                                      }
-                                      className="hover:bg-transparent bg-transparent border-[#454444]"
-                                    >
-                                      <PlusIcon />
-                                      <Input
-                                        id="videoFiles"
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="video/*"
-                                        multiple
-                                        onChange={handleFileChange}
-                                        className="hidden"
-                                      />
-                                    </Button>
-                                  </div>
-                                )}
-
-                                <Button
-                                  size={"icon"}
-                                  variant={"link"}
-                                  onClick={() =>
-                                    showShareModal(
-                                      `sharedGame?id=${game.id}` as string
-                                    )
-                                  }
-                                >
-                                  <Share2 className="w-8 h-8" />
-                                </Button>
-                              </div>
                             </div>
                           </div>
                         ))}
@@ -1212,9 +1267,34 @@ export function VideoPageMain() {
         {/* <div className="flex-1 flex flex-col h-full"> */}
         <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
           <div className="flex-1 p-4 border-b aspect-video">
-            {fetchingVideoDetails ? (
+            {fetchingVideoDetails || replacingVideo?.status === "uploading" ? (
               <div className="h-full flex items-center justify-center">
                 <Loading />
+                {/* {replacingVideo &&
+                  replacingVideo.videoId === selectedVideo?._id && (
+                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded">
+                      {replacingVideo.status === "uploading" && (
+                        <div className="flex items-center gap-2">
+                          <Loading size={16} />
+                          <span>Replacing video...</span>
+                        </div>
+                      )}
+                      {replacingVideo.status === "success" && (
+                        <div className="flex items-center gap-2 text-green-400">
+                          <CircleCheck className="w-4 h-4" />
+                          <span>Video replaced successfully</span>
+                        </div>
+                      )}
+                      {replacingVideo.status === "error" && (
+                        <div className="flex items-center gap-2 text-red-400">
+                          <CircleX className="w-4 h-4" />
+                          <span>
+                            {replacingVideo.error || "Error replacing video"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )} */}
               </div>
             ) : selectedVideo ? (
               <div className="h-full flex flex-col">
@@ -1239,7 +1319,7 @@ export function VideoPageMain() {
                                   }
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
-                                  onTrimComplete={(blob, start, end) => {
+                                  onTrimComplete={async (blob, start, end) => {
                                     setTrimmedVideo({ blob, start, end });
                                     console.log(
                                       "Trimmed video saved to state:",
@@ -1250,6 +1330,13 @@ export function VideoPageMain() {
                                         duration: end - start,
                                       }
                                     );
+
+                                    if (selectedVideo?._id) {
+                                      await handleReplaceVideo(
+                                        selectedVideo._id,
+                                        blob
+                                      );
+                                    }
                                   }}
                                 />
                               </div>

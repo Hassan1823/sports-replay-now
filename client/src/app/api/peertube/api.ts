@@ -217,6 +217,36 @@ export const uploadVideoToGame = async (
   }
 };
 
+// update the video
+export const updateVideoFile = async (
+  videoId: string,
+  file: File
+): Promise<ApiResponse> => {
+  const formData = new FormData();
+  formData.append("videoFile", file);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/update-video/${videoId}`,
+      {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || "Video update failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Update video error:", error);
+    throw error;
+  }
+};
+
 // Upload multiple videos to a game (batch)
 export const uploadMultipleVideosToGame = async (
   gameId: string,
