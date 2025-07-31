@@ -1430,7 +1430,7 @@ export function VideoPageMain() {
           </div>
 
           <Card className="border px-2 bg-[#858585]">
-            <h2 className="text-lg font-semibold mb-4 bg-[#858585]">
+            <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
               {(() => {
                 const game = seasons
                   .flatMap((season) => season.games)
@@ -1488,7 +1488,7 @@ export function VideoPageMain() {
             {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
               <li
                 key={`upload-${idx}`}
-                className="px-0 text-[0.85rem] text-gray-500 italic flex items-center gap-2"
+                className="px-0 text-[0.85rem] text-primary flex items-center gap-2 max-w-[80%]"
               >
                 {file.status === "uploading" ? (
                   <Loading size={16} />
@@ -1628,4 +1628,4 @@ export function VideoPageMain() {
   );
 }
 
-// **************************************
+// *****************************************************
