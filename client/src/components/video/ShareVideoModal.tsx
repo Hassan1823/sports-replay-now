@@ -19,12 +19,40 @@ const ShareVideoModal: React.FC<ShareVideoModalProps> = ({
     NEXT_PUBLIC_BASE_URL ||
     process.env.NEXT_PUBLIC_BASE_URL ||
     "http://142.171.232.171:3000"
-  }/sharedVideo?id=${shareVideoId}`;
+  }/${shareVideoId}`;
   console.log("🚀 ~ ShareVideoModal ~ videoLink:", videoLink);
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(videoLink);
-    toast.success("Link copied to clipboard!");
+  const handleCopyLink = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(videoLink);
+        toast.success("Copied to clipboard!");
+      } else {
+        // fallback for insecure context or unsupported clipboard API
+        const textArea = document.createElement("textarea");
+        textArea.value = videoLink;
+        // Avoid scrolling to bottom
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          const successful = document.execCommand("copy");
+          if (successful) {
+            toast.success("Copied to clipboard!");
+          } else {
+            throw new Error();
+          }
+        } catch {
+          toast.error("Failed to copy link");
+        }
+        document.body.removeChild(textArea);
+      }
+    } catch {
+      toast.error("Failed to copy link");
+    }
   };
 
   // Ref for QRCode SVG

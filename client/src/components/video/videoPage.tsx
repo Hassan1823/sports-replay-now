@@ -122,8 +122,6 @@ export function VideoPageMain() {
     id: string;
     name: string;
   } | null>(null);
-  const [shareLink, setShareLink] = useState("");
-  console.log("🚀 ~ VideoPageMain ~ shareLink:", shareLink);
   const [fetchingVideos, setFetchingVideos] = useState(false);
   const [fetchingVideoDetails, setFetchingVideoDetails] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -520,14 +518,14 @@ export function VideoPageMain() {
     }
   };
 
-  const shareSeason = (seasonId: string) => {
-    const base = typeof window !== "undefined" ? window.location.origin : "";
-    const link = `${base}/share/${seasonId}`;
-    setShareLink(link);
-    navigator.clipboard.writeText(link).then(() => {
-      toast.success("Copied to clipboard!");
-    });
-  };
+  // const shareSeason = (seasonId: string) => {
+  //   const base = typeof window !== "undefined" ? window.location.origin : "";
+  //   const link = `${base}/share/${seasonId}`;
+  //   setShareLink(link);
+  //   navigator.clipboard.writeText(link).then(() => {
+  //     toast.success("Copied to clipboard!");
+  //   });
+  // };
 
   const toggleEditMode = () => {
     setEditMode(!editMode);
@@ -833,8 +831,8 @@ export function VideoPageMain() {
   const [shareModal, setShareModal] = useState(false);
   const [shareVideoId, setShareVideoId] = useState("");
 
-  const showShareModal = (video: Video) => {
-    setShareVideoId(video._id || "");
+  const showShareModal = (link: string) => {
+    setShareVideoId(link || "");
     setShareModal(true);
   };
 
@@ -971,13 +969,15 @@ export function VideoPageMain() {
 
                         <div className="flex space-x-1">
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-transparent"
-                            disabled={loading}
-                            onClick={() => shareSeason(season.id)}
+                            size={"icon"}
+                            variant={"link"}
+                            onClick={() =>
+                              showShareModal(
+                                `sharedSeason?id=${season.id}` as string
+                              )
+                            }
                           >
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="w-8 h-8" />
                           </Button>
                           {editMode && (
                             <>
@@ -1157,31 +1157,45 @@ export function VideoPageMain() {
                                 </DialogContent>
                               </Dialog>
 
-                              {/* add video button */}
-                              {!editMode && game.id === selectedGameId && (
-                                <div className="flex items-center gap-4">
-                                  <Button
-                                    size={"sm"}
-                                    variant={"outline"}
-                                    disabled={loading}
-                                    onClick={() =>
-                                      fileInputRef.current?.click()
-                                    }
-                                    className="hover:bg-transparent bg-transparent border-[#454444]"
-                                  >
-                                    <PlusIcon />
-                                    <Input
-                                      id="videoFiles"
-                                      ref={fileInputRef}
-                                      type="file"
-                                      accept="video/*"
-                                      multiple
-                                      onChange={handleFileChange}
-                                      className="hidden"
-                                    />
-                                  </Button>
-                                </div>
-                              )}
+                              <div className="flex flex-nowrap justify-center items-center">
+                                {/* add video button */}
+                                {!editMode && game.id === selectedGameId && (
+                                  <div className="flex items-center gap-4">
+                                    <Button
+                                      size={"sm"}
+                                      variant={"outline"}
+                                      disabled={loading}
+                                      onClick={() =>
+                                        fileInputRef.current?.click()
+                                      }
+                                      className="hover:bg-transparent bg-transparent border-[#454444]"
+                                    >
+                                      <PlusIcon />
+                                      <Input
+                                        id="videoFiles"
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="video/*"
+                                        multiple
+                                        onChange={handleFileChange}
+                                        className="hidden"
+                                      />
+                                    </Button>
+                                  </div>
+                                )}
+
+                                <Button
+                                  size={"icon"}
+                                  variant={"link"}
+                                  onClick={() =>
+                                    showShareModal(
+                                      `sharedGame?id=${game.id}` as string
+                                    )
+                                  }
+                                >
+                                  <Share2 className="w-8 h-8" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1478,7 +1492,11 @@ export function VideoPageMain() {
                           <Button
                             size={"icon"}
                             variant={"link"}
-                            onClick={() => showShareModal(video)}
+                            onClick={() =>
+                              showShareModal(
+                                `sharedVideo?id=${video._id}` as string
+                              )
+                            }
                           >
                             <Share2 className="w-8 h-8" />
                           </Button>
