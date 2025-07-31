@@ -707,7 +707,7 @@ export function VideoPageMain() {
               },
             }));
 
-            // Refetch library only if user is currently viewing this game
+            // Silently refresh the game's videos in the background
             if (selectedGameId === uploadingGameId) {
               const videosRes = await getVideosForGame(selectedGameId);
               if (videosRes.success) {
@@ -715,7 +715,7 @@ export function VideoPageMain() {
                   ? videosRes.data
                   : [];
 
-                // Update the seasons state
+                // Update the seasons state without affecting UI
                 setSeasons((prevSeasons) =>
                   prevSeasons.map((season) => {
                     if (season.id === selectedSeasonId) {
@@ -736,7 +736,10 @@ export function VideoPageMain() {
                   })
                 );
 
+                // Only update libraryVideos if we're currently viewing this game
+                // if (uploadingGameId && uploadingGameId === selectedGameId) {
                 setLibraryVideos(updatedVideos);
+                // }
               }
             }
           }
@@ -848,7 +851,7 @@ export function VideoPageMain() {
       {/* <div className="flex lg:flex-col flex-row justify-start items-start h-full bg-transparent"> */}
       <div className="flex lg:flex-row flex-col justify-start items-start gap-2 lg:h-full h-auto bg-transparent">
         {/* <div className="w-1/4 h-full border-r p-4"> */}
-        <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent">
+        <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent lg:overflow-y-auto">
           <div className="w-full h-auto flex justify-between items-center gap-2 py-4 px-[0%]">
             <Button
               size={"sm"}
@@ -1489,12 +1492,12 @@ export function VideoPageMain() {
             {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
               <li
                 key={`upload-${idx}`}
-                className="px-0 text-[0.85rem] text-primary flex items-center gap-2 max-w-[80%]"
+                className="px-0 text-[0.85rem] h-auto text-primary flex items-center gap-2 max-w-[80%]"
               >
                 {file.status === "uploading" ? (
                   <Loading size={16} />
                 ) : file.status === "error" ? (
-                  <CircleX className="w-4 h-4 text-red-500" />
+                  <CircleX size={16} className=" text-red-500" />
                 ) : null}
                 <span className="truncate">
                   {file.name}
