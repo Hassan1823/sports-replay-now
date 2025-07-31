@@ -657,6 +657,9 @@ export function VideoPageMain() {
     };
   }>({});
 
+  // state to tract uploading gameId
+  const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
+
   const handleUploadConfirmation = async (confirmed: boolean) => {
     setUploadConfirmation({ open: false, files: [], muteMap: {} });
     if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
@@ -674,6 +677,8 @@ export function VideoPageMain() {
     }));
 
     try {
+      setUploadingGameId(selectedGameId);
+
       for (let i = 0; i < uploadConfirmation.files.length; i++) {
         const file = uploadConfirmation.files[i];
         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
@@ -702,36 +707,38 @@ export function VideoPageMain() {
             }));
 
             // Silently refresh the game's videos in the background
-            const videosRes = await getVideosForGame(selectedGameId);
-            if (videosRes.success) {
-              const updatedVideos = Array.isArray(videosRes.data)
-                ? videosRes.data
-                : [];
+            if (uploadingGameId && uploadingGameId === selectedGameId) {
+              const videosRes = await getVideosForGame(selectedGameId);
+              if (videosRes.success) {
+                const updatedVideos = Array.isArray(videosRes.data)
+                  ? videosRes.data
+                  : [];
 
-              // Update the seasons state without affecting UI
-              setSeasons((prevSeasons) =>
-                prevSeasons.map((season) => {
-                  if (season.id === selectedSeasonId) {
-                    return {
-                      ...season,
-                      games: season.games.map((game) => {
-                        if (game.id === selectedGameId) {
-                          return {
-                            ...game,
-                            videos: updatedVideos,
-                          };
-                        }
-                        return game;
-                      }),
-                    };
-                  }
-                  return season;
-                })
-              );
+                // Update the seasons state without affecting UI
+                setSeasons((prevSeasons) =>
+                  prevSeasons.map((season) => {
+                    if (season.id === selectedSeasonId) {
+                      return {
+                        ...season,
+                        games: season.games.map((game) => {
+                          if (game.id === selectedGameId) {
+                            return {
+                              ...game,
+                              videos: updatedVideos,
+                            };
+                          }
+                          return game;
+                        }),
+                      };
+                    }
+                    return season;
+                  })
+                );
 
-              // Only update libraryVideos if we're currently viewing this game
-              if (selectedGameId === selectedGameId) {
-                setLibraryVideos(updatedVideos);
+                // Only update libraryVideos if we're currently viewing this game
+                if (uploadingGameId && uploadingGameId === selectedGameId) {
+                  setLibraryVideos(updatedVideos);
+                }
               }
             }
           }
@@ -755,6 +762,7 @@ export function VideoPageMain() {
         }
       }
     } finally {
+      setUploadingGameId(null);
       // Clean up completed uploads after a delay
       setTimeout(() => {
         setActiveUploads((prev) => {
@@ -1628,4 +1636,4 @@ export function VideoPageMain() {
   );
 }
 
-// *****************************************************
+// ********************************************************************************
