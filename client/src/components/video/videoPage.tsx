@@ -660,6 +660,7 @@ export function VideoPageMain() {
   // state to tract uploading gameId
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
 
+  // 888888888888888888888888
   const handleUploadConfirmation = async (confirmed: boolean) => {
     setUploadConfirmation({ open: false, files: [], muteMap: {} });
     if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
@@ -706,15 +707,15 @@ export function VideoPageMain() {
               },
             }));
 
-            // Silently refresh the game's videos in the background
-            if (uploadingGameId && uploadingGameId === selectedGameId) {
+            // Refetch library only if user is currently viewing this game
+            if (selectedGameId === uploadingGameId) {
               const videosRes = await getVideosForGame(selectedGameId);
               if (videosRes.success) {
                 const updatedVideos = Array.isArray(videosRes.data)
                   ? videosRes.data
                   : [];
 
-                // Update the seasons state without affecting UI
+                // Update the seasons state
                 setSeasons((prevSeasons) =>
                   prevSeasons.map((season) => {
                     if (season.id === selectedSeasonId) {
@@ -735,10 +736,7 @@ export function VideoPageMain() {
                   })
                 );
 
-                // Only update libraryVideos if we're currently viewing this game
-                if (uploadingGameId && uploadingGameId === selectedGameId) {
-                  setLibraryVideos(updatedVideos);
-                }
+                setLibraryVideos(updatedVideos);
               }
             }
           }
@@ -926,11 +924,6 @@ export function VideoPageMain() {
                                 : "border-transparent"
                             }`}
                             onClick={() => {
-                              // Clear all video-related states when switching seasons
-                              setLibraryVideos([]);
-                              setSelectedVideo(null);
-                              setSelectedVideoDetails(null);
-                              setSelectedGameId(null);
                               toggleSeason(season.id);
                               setSelectedSeasonId(season.id);
                             }}
