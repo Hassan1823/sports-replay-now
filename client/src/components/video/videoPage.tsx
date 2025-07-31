@@ -638,13 +638,13 @@ export function VideoPageMain() {
   };
 
   // Track uploading state for each file
-  const [uploadingFiles] = useState<
-    {
-      name: string;
-      status: "uploading" | "success" | "error";
-      error?: string;
-    }[]
-  >([]);
+  // const [uploadingFiles] = useState<
+  //   {
+  //     name: string;
+  //     status: "uploading" | "success" | "error";
+  //     error?: string;
+  //   }[]
+  // >([]);
 
   // Add a state to track active uploads per game
   const [activeUploads, setActiveUploads] = useState<{
@@ -660,11 +660,13 @@ export function VideoPageMain() {
   // state to tract uploading gameId
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
 
-  // 888888888888888888888888
+  // 888888888888888888888888****
   const handleUploadConfirmation = async (confirmed: boolean) => {
     setUploadConfirmation({ open: false, files: [], muteMap: {} });
     if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
       return;
+
+    setUploadingGameId(selectedGameId);
 
     // Initialize upload tracking for this game
     setActiveUploads((prev) => ({
@@ -678,8 +680,6 @@ export function VideoPageMain() {
     }));
 
     try {
-      setUploadingGameId(selectedGameId);
-
       for (let i = 0; i < uploadConfirmation.files.length; i++) {
         const file = uploadConfirmation.files[i];
         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
@@ -763,7 +763,7 @@ export function VideoPageMain() {
         }
       }
     } finally {
-      setUploadingGameId(null);
+      // setUploadingGameId(null);
       // Clean up completed uploads after a delay
       setTimeout(() => {
         setActiveUploads((prev) => {
@@ -1057,8 +1057,8 @@ export function VideoPageMain() {
                                         : "transparent",
                                   }}
                                   onClick={() => {
-                                    setLibraryVideos([]); // Clear immediately when switching
-                                    setSelectedVideo(null);
+                                    // setLibraryVideos([]); // Clear immediately when switching
+                                    // setSelectedVideo(null);
                                     handleFetchGamesVideos(season.id, game.id);
                                   }}
                                   disabled={fetchingVideos}
@@ -1433,7 +1433,7 @@ export function VideoPageMain() {
             </Button>
           </div>
 
-          <Card className="border px-2 bg-[#858585]">
+          <Card className="border px-2 bg-[#858585] gap-1">
             <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
               {(() => {
                 const game = seasons
@@ -1451,7 +1451,8 @@ export function VideoPageMain() {
                 <ol className="list-none space-y-1 ">
                   {!libraryVideos || libraryVideos.length === 0 ? (
                     <>
-                      {uploadingFiles.length > 0 ? null : (
+                      {activeUploads[selectedGameId || ""]?.files.length >
+                      0 ? null : (
                         <li className="w-full h-auto flex justify-center items-center">
                           No videos found
                         </li>
@@ -1494,11 +1495,13 @@ export function VideoPageMain() {
                 key={`upload-${idx}`}
                 className="px-0 text-[0.85rem] h-auto text-primary flex items-center gap-2 max-w-[80%]"
               >
-                {file.status === "uploading" ? (
-                  <Loading size={16} />
-                ) : file.status === "error" ? (
-                  <CircleX size={16} className=" text-red-500" />
-                ) : null}
+                <span className="">
+                  {file.status === "uploading" ? (
+                    <Loading size={16} />
+                  ) : file.status === "error" ? (
+                    <CircleX size={16} className=" text-red-500" />
+                  ) : null}
+                </span>
                 <span className="truncate">
                   {file.name}
                   {file.status === "error" && file.error && ` (${file.error})`}
