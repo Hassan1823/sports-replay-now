@@ -87,7 +87,7 @@ export function PricingCard() {
               className={`w-full py-6 text-lg font-bold transition-all ${
                 isSubscribed
                   ? "bg-gradient-to-r from-amber-700 to-amber-800 text-amber-50 hover:from-amber-800 hover:to-amber-900"
-                  : "bg-black hover:bg-gray-900 text-white"
+                  : "bg-green-600 hover:bg-green-600/50 text-white"
               } rounded-lg shadow-md`}
             >
               {isLoading ? (
