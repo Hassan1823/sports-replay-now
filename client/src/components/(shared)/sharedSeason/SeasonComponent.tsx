@@ -1,51 +1,24 @@
 "use client";
 
 import {
-  addGameToSeason,
-  createSeasonFolder,
-  deleteGame,
-  deleteSeasonFolder,
   getGamesForSeason,
   getSeasons,
   getVideoDetails,
   getVideosForGame,
   renameGame,
   renameSeasonFolder,
-  uploadVideoToGame,
 } from "@/app/api/peertube/api";
+import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import {
-  ChevronDown,
-  ChevronRight,
-  Circle,
-  CircleCheck,
-  CircleX,
-  Edit,
-  MenuIcon,
-  PlusIcon,
-  Share2,
-  Trash2,
-  Undo,
-} from "lucide-react";
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
+import { ChevronDown, ChevronRight, Circle, CircleCheck } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import Loading from "../shared/loading";
-import { Checkbox } from "../ui/checkbox";
-import ShareVideoModal from "./ShareVideoModal";
-import TrimSliderWithThumbnails from "./TrimSliderWithThumbnails";
 
 type Video = {
   description: string;
@@ -82,10 +55,18 @@ type Season = {
   games: Game[];
   open: boolean;
 };
+const SeasonComponent = () => {
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const shareSeasonId = searchParams.get("id");
+  console.log("🚀 ~ SeasonComponent ~ shareSeasonId:", shareSeasonId);
 
-export function VideoPageMain() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [editMode, setEditMode] = useState(false);
+  // useEffect(() => {
+  //   if (shareSeasonId) {
+  //     setSelectedSeasonId(shareSeasonId);
+  //   }
+  // }, [shareSeasonId]);
+
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -100,18 +81,9 @@ export function VideoPageMain() {
     [key: string]: unknown; // Add more fields as needed
   };
 
-  // Add this state to VideoPageMain
-  const [trimmedVideo, setTrimmedVideo] = useState<{
-    blob: Blob | null;
-    start: number;
-    end: number;
-  }>({ blob: null, start: 0, end: 0 });
-  console.log("🚀 ~ VideoPageMain ~ trimmedVideo:", trimmedVideo);
-
   const [selectedVideoDetails, setSelectedVideoDetails] =
     useState<VideoDetails | null>(null);
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
-  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   console.log("🚀 ~ VideoPageMain ~ currentPlaybackTime:", currentPlaybackTime);
@@ -124,20 +96,13 @@ export function VideoPageMain() {
   } | null>(null);
   const [fetchingVideos, setFetchingVideos] = useState(false);
   const [fetchingVideoDetails, setFetchingVideoDetails] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const [showAllVideos, setShowAllVideos] = useState(false);
   const [videoThumbnail, setVideoThumbnail] = useState("");
-
-  const [uploadConfirmation, setUploadConfirmation] = useState<{
-    open: boolean;
-    files: File[];
-    muteMap: { [filename: string]: boolean };
-  }>({ open: false, files: [], muteMap: {} });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // Hls.js instance ref
   const hlsInstance = useRef<Hls | null>(null);
-  const { refreshToken, user, logout } = useAuth();
+  const { user } = useAuth();
 
   // GET VIDEO DETAILS
 
@@ -316,67 +281,6 @@ export function VideoPageMain() {
     );
   };
 
-  const addSeason = async () => {
-    if (!user || !user._id) {
-      toast.error("User not found. Please login.");
-      return;
-    }
-    try {
-      // setSeasonLoading(true);
-
-      const res = await createSeasonFolder("Season", user._id);
-      if (res.success && res.data) {
-        const newSeason: Season = {
-          id: (res.data as { _id: string; name?: string })._id,
-          name: (res.data as { _id: string; name?: string }).name || "Season",
-          open: true,
-          games: [],
-        };
-        setSeasons([...seasons, newSeason]);
-      } else {
-        toast.error(res.message || "Failed to create season");
-      }
-    } catch (err) {
-      toast.error("Error creating season: " + err);
-    } finally {
-      setSeasonLoading(false);
-    }
-  };
-
-  const addGame = async () => {
-    if (!selectedSeasonId) {
-      toast.error("Please select a season first");
-      return;
-    }
-
-    try {
-      // setSeasonLoading(true);
-
-      const res = await addGameToSeason(selectedSeasonId, "Game");
-      if (res.success && res.data) {
-        const newGame: Game = {
-          id: (res.data as { _id: string; name?: string })._id,
-          name: (res.data as { _id: string; name?: string }).name || "Game",
-          open: true,
-          videos: [],
-        };
-        setSeasons(
-          seasons.map((s) =>
-            s.id === selectedSeasonId
-              ? { ...s, games: [...s.games, newGame] }
-              : s
-          )
-        );
-      } else {
-        toast.error(res.message || "Failed to create game");
-      }
-    } catch (err) {
-      toast.error("Error creating game: " + err);
-    } finally {
-      setSeasonLoading(false);
-    }
-  };
-
   const startRenaming = (
     type: "season" | "game" | "video",
     id: string,
@@ -429,106 +333,6 @@ export function VideoPageMain() {
     } finally {
       setSeasonLoading(false);
     }
-  };
-
-  // delete season
-
-  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const deleteSeason = async (seasonId: string) => {
-    if (!user || !user._id) {
-      toast.error("User not found. Please login.");
-      return;
-    }
-    try {
-      setDeleteLoading(true);
-
-      const res = await deleteSeasonFolder(seasonId, user._id);
-      if (res.success) {
-        // Refetch all seasons and games after deletion, reset all selections
-        await fetchSeasons();
-        setSelectedSeasonId(null);
-        setSelectedGameId(null);
-        setSelectedVideo(null);
-        setLibraryVideos([]);
-        setSelectedVideoDetails(null);
-        toast.success("Season deleted successfully");
-      } else {
-        toast.error(res.message || "Failed to delete season");
-      }
-    } catch (err) {
-      toast.error("Delete season error: " + err);
-    } finally {
-      setDeleteLoading(false);
-      setSeasonLoading(false);
-      setShowConfirmDeleteModal(false);
-    }
-  };
-
-  // ******************
-  // State for delete confirmation modal
-  const [pendingDelete, setPendingDelete] = useState<{
-    seasonId: string;
-    gameId: string;
-  } | null>(null);
-
-  // Show confirmation modal before deleting a game
-  const deleteGameFromSeason = (seasonId: string, gameId: string) => {
-    setPendingDelete({ seasonId, gameId });
-  };
-
-  // Actually delete the game after confirmation
-  const confirmDeleteGame = async () => {
-    if (!pendingDelete) return;
-    const { seasonId, gameId } = pendingDelete;
-
-    try {
-      setSeasonLoading(true);
-      const res = await deleteGame(gameId);
-      if (res.success) {
-        // Update the seasons state
-        const updatedSeasons = seasons.map((season) =>
-          season.id === seasonId
-            ? {
-                ...season,
-                games: season.games.filter((game) => game.id !== gameId),
-              }
-            : season
-        );
-        setSeasons(updatedSeasons);
-
-        // Clear the video-related states if we deleted the currently selected game
-        if (selectedGameId === gameId) {
-          setSelectedGameId(null);
-          setSelectedVideo(null);
-          setLibraryVideos([]);
-          setSelectedVideoDetails(null);
-        }
-
-        toast.success("Game deleted successfully");
-      } else {
-        toast.error(res.message || "Failed to delete game");
-      }
-    } catch (err) {
-      toast.error("Delete game error: " + err);
-    } finally {
-      setDeleteLoading(false);
-      setSeasonLoading(false);
-      setPendingDelete(null);
-    }
-  };
-
-  // const shareSeason = (seasonId: string) => {
-  //   const base = typeof window !== "undefined" ? window.location.origin : "";
-  //   const link = `${base}/share/${seasonId}`;
-  //   setShareLink(link);
-  //   navigator.clipboard.writeText(link).then(() => {
-  //     toast.success("Copied to clipboard!");
-  //   });
-  // };
-
-  const toggleEditMode = () => {
-    setEditMode(!editMode);
   };
 
   const selectVideo = (video: Video) => {
@@ -601,180 +405,6 @@ export function VideoPageMain() {
   //* ADD NEW VIDEO
   // --------
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const filesArr = Array.from(e.target.files);
-      const validTypes = [
-        "video/mp4",
-        "video/quicktime",
-        "video/x-msvideo",
-        "video/x-matroska",
-        "video/webm",
-      ];
-      const filtered = filesArr.filter((file) => {
-        if (!validTypes.includes(file.type)) {
-          toast.error(
-            `Invalid file type for ${file.name} (MP4, MOV, AVI, MKV, WEBM required)`
-          );
-          return false;
-        }
-        return true;
-      });
-      if (filtered.length > 0) {
-        // Default all to unmuted
-        const muteMap: { [filename: string]: boolean } = {};
-        filtered.forEach((file) => {
-          muteMap[file.name] = false;
-        });
-        setUploadConfirmation({
-          open: true,
-          files: filtered,
-          muteMap,
-        });
-      }
-    }
-  };
-
-  // Track uploading state for each file
-  // const [uploadingFiles] = useState<
-  //   {
-  //     name: string;
-  //     status: "uploading" | "success" | "error";
-  //     error?: string;
-  //   }[]
-  // >([]);
-
-  // Add a state to track active uploads per game
-  const [activeUploads, setActiveUploads] = useState<{
-    [gameId: string]: {
-      files: {
-        name: string;
-        status: "uploading" | "success" | "error";
-        error?: string;
-      }[];
-    };
-  }>({});
-
-  // state to tract uploading gameId
-  const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
-
-  // 888888888888888888888888****
-  const handleUploadConfirmation = async (confirmed: boolean) => {
-    setUploadConfirmation({ open: false, files: [], muteMap: {} });
-    if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
-      return;
-
-    setUploadingGameId(selectedGameId);
-
-    // Initialize upload tracking for this game
-    setActiveUploads((prev) => ({
-      ...prev,
-      [selectedGameId]: {
-        files: uploadConfirmation.files.map((file) => ({
-          name: file.name,
-          status: "uploading" as const,
-        })),
-      },
-    }));
-
-    try {
-      for (let i = 0; i < uploadConfirmation.files.length; i++) {
-        const file = uploadConfirmation.files[i];
-        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-        const description = nameWithoutExt || "Uploaded via UI";
-        const mute = uploadConfirmation.muteMap[file.name] || false;
-
-        try {
-          const res = await uploadVideoToGame(
-            selectedGameId,
-            nameWithoutExt,
-            description,
-            file,
-            mute
-          );
-
-          if (res.success) {
-            // Update the upload status silently
-            setActiveUploads((prev) => ({
-              ...prev,
-              [selectedGameId]: {
-                files:
-                  prev[selectedGameId]?.files.filter(
-                    (f) => f.name !== file.name
-                  ) || [],
-              },
-            }));
-
-            // Silently refresh the game's videos in the background
-            if (selectedGameId === uploadingGameId) {
-              const videosRes = await getVideosForGame(selectedGameId);
-              if (videosRes.success) {
-                const updatedVideos = Array.isArray(videosRes.data)
-                  ? videosRes.data
-                  : [];
-
-                // Update the seasons state without affecting UI
-                setSeasons((prevSeasons) =>
-                  prevSeasons.map((season) => {
-                    if (season.id === selectedSeasonId) {
-                      return {
-                        ...season,
-                        games: season.games.map((game) => {
-                          if (game.id === selectedGameId) {
-                            return {
-                              ...game,
-                              videos: updatedVideos,
-                            };
-                          }
-                          return game;
-                        }),
-                      };
-                    }
-                    return season;
-                  })
-                );
-
-                // Only update libraryVideos if we're currently viewing this game
-                // if (uploadingGameId && uploadingGameId === selectedGameId) {
-                setLibraryVideos(updatedVideos);
-                // }
-              }
-            }
-          }
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          setActiveUploads((prev) => ({
-            ...prev,
-            [selectedGameId]: {
-              files:
-                prev[selectedGameId]?.files.map((f) =>
-                  f.name === file.name
-                    ? {
-                        ...f,
-                        status: "error" as const,
-                        error: errorMessage,
-                      }
-                    : f
-                ) || [],
-            },
-          }));
-        }
-      }
-    } finally {
-      // setUploadingGameId(null);
-      // Clean up completed uploads after a delay
-      setTimeout(() => {
-        setActiveUploads((prev) => {
-          const newState = { ...prev };
-          if (newState[selectedGameId]?.files.length === 0) {
-            delete newState[selectedGameId];
-          }
-          return newState;
-        });
-      }, 3000);
-    }
-  };
-
   useEffect(() => {
     if (
       selectedVideoDetails &&
@@ -827,15 +457,6 @@ export function VideoPageMain() {
     };
   }, [selectedVideoDetails]);
 
-  // * show share modal
-  const [shareModal, setShareModal] = useState(false);
-  const [shareVideoId, setShareVideoId] = useState("");
-
-  const showShareModal = (link: string) => {
-    setShareVideoId(link || "");
-    setShareModal(true);
-  };
-
   if (loading) {
     return (
       <div className="">
@@ -846,53 +467,9 @@ export function VideoPageMain() {
 
   return (
     <>
-      {/* <div className="flex lg:flex-col flex-row justify-start items-start h-full bg-transparent"> */}
       <div className="flex lg:flex-row flex-col justify-start items-start gap-2 lg:h-full h-auto bg-transparent">
-        {/* <div className="w-1/4 h-full border-r p-4"> */}
+        {/* season and game folders */}
         <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent lg:overflow-y-auto">
-          <div className="w-full h-auto flex justify-between items-center gap-2 py-4 px-[0%]">
-            <Button
-              size={"sm"}
-              className="text-xs"
-              onClick={addSeason}
-              disabled={loading}
-            >
-              <PlusIcon /> SEASON
-            </Button>
-            <Button
-              size={"sm"}
-              className="text-xs"
-              onClick={async () => {
-                await addGame();
-                // After adding a game, do NOT change selectedGameId or selectedVideo.
-                // This keeps the user in the currently selected game.
-              }}
-              disabled={!selectedSeasonId || loading}
-            >
-              <PlusIcon /> GAME
-            </Button>
-            <Button
-              size={"sm"}
-              variant={
-                !selectedGameId || loading || editMode ? "outline" : "default"
-              }
-              disabled={!selectedGameId || loading || editMode}
-              onClick={() => fileInputRef.current?.click()}
-              className="disabled:opacity-50 text-xs disabled:cursor-not-allowed"
-            >
-              UPLOAD
-              <Input
-                id="videoFiles"
-                ref={fileInputRef}
-                type="file"
-                accept="video/*"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </Button>
-          </div>
-
           <div className="space-y-4">
             {seasonLoading ? (
               <div className="w-full min-h-[40vh] h-full flex justify-center items-center">
@@ -964,73 +541,6 @@ export function VideoPageMain() {
                             >
                               {season.name}
                             </CardTitle>
-                          )}
-                        </div>
-
-                        <div className="flex space-x-1 justify-center items-center">
-                          <Button
-                            size={"icon"}
-                            variant={"link"}
-                            onClick={() =>
-                              showShareModal(
-                                `sharedSeason?id=${season.id}` as string
-                              )
-                            }
-                          >
-                            <Share2 className="w-8 h-8" />
-                          </Button>
-                          {editMode && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 bg-transparent hover:bg-transparent"
-                                onClick={() => setShowConfirmDeleteModal(true)}
-                                disabled={loading}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                              {/* Delete Season Confirmation Modal */}
-                              <Dialog
-                                open={showConfirmDeleteModal}
-                                onOpenChange={(open) => {
-                                  if (!open) setShowConfirmDeleteModal(false);
-                                }}
-                              >
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Delete Season</DialogTitle>
-                                    <DialogDescription>
-                                      Are you sure you want to delete this
-                                      season? This action cannot be undone.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <DialogFooter>
-                                    <Button
-                                      variant="outline"
-                                      onClick={() =>
-                                        setShowConfirmDeleteModal(false)
-                                      }
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      disabled={deleteLoading}
-                                      variant="destructive"
-                                      onClick={() => {
-                                        deleteSeason(season.id);
-                                      }}
-                                    >
-                                      {deleteLoading ? (
-                                        <Loading size={20} />
-                                      ) : (
-                                        "Delete"
-                                      )}
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            </>
                           )}
                         </div>
                       </div>
@@ -1105,97 +615,6 @@ export function VideoPageMain() {
                                   </span>
                                 )}
                               </div>
-                              {editMode && (
-                                <div className="flex space-x-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6"
-                                    onClick={() =>
-                                      deleteGameFromSeason(season.id, game.id)
-                                    }
-                                    disabled={loading}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                  </Button>
-                                </div>
-                              )}
-                              {/* Delete Game Confirmation Modal */}
-                              <Dialog
-                                open={!!pendingDelete}
-                                onOpenChange={(open) => {
-                                  if (!open) setPendingDelete(null);
-                                }}
-                              >
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Delete Game</DialogTitle>
-                                    <DialogDescription>
-                                      Are you sure you want to delete this game?
-                                      This action cannot be undone.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <DialogFooter>
-                                    <Button
-                                      variant="outline"
-                                      onClick={() => setPendingDelete(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      disabled={deleteLoading}
-                                      variant="destructive"
-                                      onClick={confirmDeleteGame}
-                                    >
-                                      {deleteLoading ? (
-                                        <Loading size={20} />
-                                      ) : (
-                                        "Delete"
-                                      )}
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-
-                              <div className="flex flex-nowrap justify-center items-center">
-                                {/* add video button */}
-                                {!editMode && game.id === selectedGameId && (
-                                  <div className="flex items-center gap-4">
-                                    <Button
-                                      size={"sm"}
-                                      variant={"outline"}
-                                      disabled={loading}
-                                      onClick={() =>
-                                        fileInputRef.current?.click()
-                                      }
-                                      className="hover:bg-transparent bg-transparent border-[#454444]"
-                                    >
-                                      <PlusIcon />
-                                      <Input
-                                        id="videoFiles"
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept="video/*"
-                                        multiple
-                                        onChange={handleFileChange}
-                                        className="hidden"
-                                      />
-                                    </Button>
-                                  </div>
-                                )}
-
-                                <Button
-                                  size={"icon"}
-                                  variant={"link"}
-                                  onClick={() =>
-                                    showShareModal(
-                                      `sharedGame?id=${game.id}` as string
-                                    )
-                                  }
-                                >
-                                  <Share2 className="w-8 h-8" />
-                                </Button>
-                              </div>
                             </div>
                           </div>
                         ))}
@@ -1209,7 +628,6 @@ export function VideoPageMain() {
         </div>
 
         {/* main container for video player */}
-        {/* <div className="flex-1 flex flex-col h-full"> */}
         <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
           <div className="flex-1 p-4 border-b aspect-video">
             {fetchingVideoDetails ? (
@@ -1226,35 +644,6 @@ export function VideoPageMain() {
                       {selectedVideoDetails.streamingPlaylists &&
                       selectedVideoDetails.streamingPlaylists.length > 0 ? (
                         <>
-                          {/* Trim slider with thumbnails below video */}
-                          {editMode &&
-                            selectedVideoDetails.duration &&
-                            selectedVideoDetails.duration > 0 && (
-                              <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
-                                <TrimSliderWithThumbnails
-                                  duration={selectedVideoDetails.duration}
-                                  videoUrl={
-                                    selectedVideoDetails.streamingPlaylists[0]
-                                      .files[0]?.fileUrl
-                                  }
-                                  videoId={selectedVideo?._id}
-                                  video={selectedVideo as VideoDetails}
-                                  onTrimComplete={(blob, start, end) => {
-                                    setTrimmedVideo({ blob, start, end });
-                                    console.log(
-                                      "Trimmed video saved to state:",
-                                      {
-                                        blob,
-                                        startTime: start,
-                                        endTime: end,
-                                        duration: end - start,
-                                      }
-                                    );
-                                  }}
-                                />
-                              </div>
-                            )}
-
                           <video
                             ref={videoRef}
                             controls
@@ -1419,34 +808,7 @@ export function VideoPageMain() {
         </div>
 
         {/* library section */}
-        {/* <div className="w-1/4 border-l p-4 overflow-y-auto"> */}
         <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
-          <div className="w-full h-auto flex justify-between items-center gap-0 py-4 px-0">
-            <Button
-              size={"sm"}
-              className="text-xs"
-              onClick={toggleEditMode}
-              disabled={loading}
-            >
-              {editMode ? (
-                <Undo className="mr-2 h-4 w-4" />
-              ) : (
-                <Edit className="mr-2 h-4 w-4" />
-              )}
-              EDIT
-            </Button>
-            <Button size={"sm"} className="text-xs">
-              LIBRARY
-            </Button>
-            <Button
-              size={"sm"}
-              className="text-xs"
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              <MenuIcon />
-            </Button>
-          </div>
-
           <Card className="border px-2 bg-[#858585] gap-1">
             <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
               {(() => {
@@ -1465,22 +827,19 @@ export function VideoPageMain() {
                 <ol className="list-none space-y-1 ">
                   {!libraryVideos || libraryVideos.length === 0 ? (
                     <>
-                      {activeUploads[selectedGameId || ""]?.files.length >
-                      0 ? null : (
-                        <li className="w-full h-auto flex justify-center items-center">
-                          No videos found
-                        </li>
-                      )}
+                      <li className="w-full h-auto flex justify-center items-center">
+                        No videos found
+                      </li>
                     </>
                   ) : (
                     <>
                       {libraryVideos?.map((video) => (
                         <li
                           key={video._id}
-                          className="px-0 text-[0.85rem] hover:bg-[#858585] rounded cursor-pointer flex justify-between items-center gap-2"
+                          className="px-0 text-[0.85rem] hover:bg-[#858585] rounded cursor-pointer flex justify-between items-center gap-2 "
                           onClick={() => selectVideo(video)}
                         >
-                          <div className="flex justify-start items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
+                          <div className="flex justify-start items-center gap-2 w-[90%] min-h-8 text-wrap whitespace-break-spaces">
                             <Checkbox
                               className="border-[#454444] cursor-pointer"
                               checked={selectedVideo?._id === video._id}
@@ -1489,17 +848,6 @@ export function VideoPageMain() {
                               {video.title || "no title"}
                             </span>
                           </div>
-                          <Button
-                            size={"icon"}
-                            variant={"link"}
-                            onClick={() =>
-                              showShareModal(
-                                `sharedVideo?id=${video._id}` as string
-                              )
-                            }
-                          >
-                            <Share2 className="w-8 h-8" />
-                          </Button>
                         </li>
                       ))}
                     </>
@@ -1507,150 +855,11 @@ export function VideoPageMain() {
                 </ol>
               </>
             )}
-
-            {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
-              <li
-                key={`upload-${idx}`}
-                className="px-0 text-[0.85rem] h-auto text-primary flex items-center gap-2 max-w-[80%]"
-              >
-                <span className="">
-                  {file.status === "uploading" ? (
-                    <Loading size={16} />
-                  ) : file.status === "error" ? (
-                    <CircleX size={16} className=" text-red-500" />
-                  ) : null}
-                </span>
-                <span className="truncate">
-                  {file.name}
-                  {file.status === "error" && file.error && ` (${file.error})`}
-                </span>
-              </li>
-            ))}
           </Card>
         </div>
       </div>
-
-      {/* * upload video confirmation modal  */}
-      {/* ------ */}
-      <Dialog
-        open={uploadConfirmation.open}
-        onOpenChange={(open) =>
-          setUploadConfirmation({ ...uploadConfirmation, open })
-        }
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Upload</DialogTitle>
-            <DialogDescription>
-              {uploadConfirmation.files.length === 1
-                ? `Are you sure you want to upload ${uploadConfirmation.files[0].name}?`
-                : `Are you sure you want to upload these ${uploadConfirmation.files.length} videos?`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto my-2">
-            {uploadConfirmation.files.map((file, idx) => (
-              <div
-                key={file.name + idx}
-                className="flex items-center gap-2 bg-gray-100 rounded p-2"
-              >
-                <span className="flex-1 truncate text-xs">{file.name}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => {
-                    setUploadConfirmation((prev) => ({
-                      ...prev,
-                      files: prev.files.filter((_, i) => i !== idx),
-                      muteMap: Object.fromEntries(
-                        Object.entries(prev.muteMap).filter(
-                          ([k]) => k !== file.name
-                        )
-                      ),
-                    }));
-                  }}
-                >
-                  <CircleX className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-          {/* Single Remove Sound checkbox for all files */}
-          {uploadConfirmation.files.length > 0 && (
-            <div className="flex items-center gap-2 mb-2">
-              <Checkbox
-                id="mute-all"
-                checked={uploadConfirmation.files.every(
-                  (file) => uploadConfirmation.muteMap[file.name]
-                )}
-                onCheckedChange={(checked) => {
-                  setUploadConfirmation((prev) => ({
-                    ...prev,
-                    muteMap: Object.fromEntries(
-                      prev.files.map((file) => [file.name, !!checked])
-                    ),
-                  }));
-                }}
-              />
-              <label
-                htmlFor="mute-all"
-                className="text-xs cursor-pointer select-none"
-              >
-                Remove Sound
-              </label>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => handleUploadConfirmation(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => handleUploadConfirmation(true)}
-              disabled={loading || uploadConfirmation.files.length === 0}
-            >
-              Upload
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Sidebar video menu */}
-      {showMenu && (
-        <div className="fixed top-0 right-0 h-full w-[70vw] md:w-[25vw] bg-white shadow-lg z-50 flex flex-col border-l border-gray-200">
-          <div className="flex justify-end items-center mt-2 py-6 px-4 ">
-            {/* <span className="font-semibold text-lg">Menu</span> */}
-            <Button onClick={() => setShowMenu(false)}>
-              <CircleX className="h-8 w-8" />
-            </Button>
-          </div>
-          <div className="flex-1 flex flex-col justify-end p-4">
-            {refreshToken ? (
-              <Button
-                className="w-full h-auto p-[2%] rounded-full"
-                onClick={logout}
-              >
-                Logout
-              </Button>
-            ) : (
-              <Button asChild className="w-full h-auto p-[2%] rounded-full">
-                <Link href="/login">Sign&nbsp;Up&nbsp;Or&nbsp;Login</Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* show share video modal here  */}
-      {shareModal && (
-        <ShareVideoModal
-          setShareModal={setShareModal}
-          shareVideoId={shareVideoId}
-        />
-      )}
     </>
   );
-}
+};
 
-// ********************************************************************************
+export default SeasonComponent;

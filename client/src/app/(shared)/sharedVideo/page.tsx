@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { getVideoDetails } from "../api/peertube/api";
+
 import Loading from "@/components/shared/loading";
 import Hls from "hls.js";
+import { getVideoDetails } from "@/app/api/peertube/api";
 
 const initialVideoDetails = {
   id: "",
