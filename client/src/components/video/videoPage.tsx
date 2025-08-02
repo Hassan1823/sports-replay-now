@@ -1270,31 +1270,6 @@ export function VideoPageMain() {
             {fetchingVideoDetails || replacingVideo?.status === "uploading" ? (
               <div className="h-full flex items-center justify-center">
                 <Loading />
-                {/* {replacingVideo &&
-                  replacingVideo.videoId === selectedVideo?._id && (
-                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded">
-                      {replacingVideo.status === "uploading" && (
-                        <div className="flex items-center gap-2">
-                          <Loading size={16} />
-                          <span>Replacing video...</span>
-                        </div>
-                      )}
-                      {replacingVideo.status === "success" && (
-                        <div className="flex items-center gap-2 text-green-400">
-                          <CircleCheck className="w-4 h-4" />
-                          <span>Video replaced successfully</span>
-                        </div>
-                      )}
-                      {replacingVideo.status === "error" && (
-                        <div className="flex items-center gap-2 text-red-400">
-                          <CircleX className="w-4 h-4" />
-                          <span>
-                            {replacingVideo.error || "Error replacing video"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )} */}
               </div>
             ) : selectedVideo ? (
               <div className="h-full flex flex-col">
@@ -1305,42 +1280,127 @@ export function VideoPageMain() {
                     <>
                       {selectedVideoDetails.streamingPlaylists &&
                       selectedVideoDetails.streamingPlaylists.length > 0 ? (
+                        // <>
+                        //   {/* Trim slider with thumbnails below video */}
+                        //   {editMode &&
+                        //     selectedVideoDetails.duration &&
+                        //     selectedVideoDetails.duration > 0 && (
+                        //       <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
+                        //         <TrimSliderWithThumbnails
+                        //           duration={selectedVideoDetails.duration}
+                        //           videoUrl={
+                        //             selectedVideoDetails.streamingPlaylists[0]
+                        //               .files[0]?.fileUrl
+                        //           }
+                        //           videoId={selectedVideo?._id}
+                        //           video={selectedVideo as VideoDetails}
+                        //           onTrimComplete={async (blob, start, end) => {
+                        //             setTrimmedVideo({ blob, start, end });
+                        //             console.log(
+                        //               "Trimmed video saved to state:",
+                        //               {
+                        //                 blob,
+                        //                 startTime: start,
+                        //                 endTime: end,
+                        //                 duration: end - start,
+                        //               }
+                        //             );
+
+                        //             if (selectedVideo?._id) {
+                        //               await handleReplaceVideo(
+                        //                 selectedVideo._id,
+                        //                 blob
+                        //               );
+                        //             }
+                        //           }}
+                        //         />
+                        //       </div>
+                        //     )}
+
+                        //   <video
+                        //     ref={videoRef}
+                        //     controls
+                        //     autoPlay
+                        //     className="w-full h-full rounded-lg"
+                        //     poster={videoThumbnail}
+                        //     onTimeUpdate={(e) => {
+                        //       setCurrentPlaybackTime(
+                        //         e.currentTarget.currentTime
+                        //       );
+                        //     }}
+                        //     onEnded={() => {
+                        //       // Find the index of the current video
+                        //       const currentIdx = libraryVideos.findIndex(
+                        //         (v) => v._id === selectedVideo?._id
+                        //       );
+                        //       if (
+                        //         currentIdx !== -1 &&
+                        //         currentIdx < libraryVideos.length - 1
+                        //       ) {
+                        //         selectVideo(libraryVideos[currentIdx + 1]);
+                        //       }
+                        //     }}
+                        //   />
+                        // </>
+
                         <>
-                          {/* Trim slider with thumbnails below video */}
-                          {editMode &&
-                            selectedVideoDetails.duration &&
-                            selectedVideoDetails.duration > 0 && (
-                              <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
-                                <TrimSliderWithThumbnails
-                                  duration={selectedVideoDetails.duration}
-                                  videoUrl={
-                                    selectedVideoDetails.streamingPlaylists[0]
-                                      .files[0]?.fileUrl
-                                  }
-                                  videoId={selectedVideo?._id}
-                                  video={selectedVideo as VideoDetails}
-                                  onTrimComplete={async (blob, start, end) => {
-                                    setTrimmedVideo({ blob, start, end });
-                                    console.log(
-                                      "Trimmed video saved to state:",
+                          {/* Add the trimmer component */}
+                          {editMode && selectedVideoDetails.duration > 0 && (
+                            <div className="w-full z-50 flex flex-col items-center px-0">
+                              <TrimSliderWithThumbnails
+                                duration={selectedVideoDetails.duration}
+                                videoUrl={
+                                  selectedVideoDetails.streamingPlaylists[0]
+                                    .files[0]?.fileUrl
+                                }
+                                videoThumbnail={videoThumbnail}
+                                videoRef={videoRef} // Pass your video ref
+                                videoId={selectedVideo?._id}
+                                onTrimComplete={async (blob, start, end) => {
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append(
+                                      "videoFile",
+                                      blob,
+                                      `trimmed-${Date.now()}.mp4`
+                                    );
+
+                                    const response = await axios.post(
+                                      `/api/seasons/update-video/${selectedVideo._id}`,
+                                      formData,
                                       {
-                                        blob,
-                                        startTime: start,
-                                        endTime: end,
-                                        duration: end - start,
+                                        headers: {
+                                          "Content-Type": "multipart/form-data",
+                                        },
+                                        withCredentials: true,
                                       }
                                     );
 
-                                    if (selectedVideo?._id) {
-                                      await handleReplaceVideo(
-                                        selectedVideo._id,
-                                        blob
+                                    if (response.data.success) {
+                                      toast.success(
+                                        "Video trimmed and updated successfully"
+                                      );
+                                      // Refresh the video list
+                                      if (selectedSeasonId && selectedGameId) {
+                                        await handleFetchGamesVideos(
+                                          selectedSeasonId,
+                                          selectedGameId
+                                        );
+                                      }
+                                    } else {
+                                      throw new Error(
+                                        response.data.message || "Update failed"
                                       );
                                     }
-                                  }}
-                                />
-                              </div>
-                            )}
+                                  } catch (error) {
+                                    toast.error(
+                                      `Failed to update video: ${error.message}`
+                                    );
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
 
                           <video
                             ref={videoRef}
@@ -1348,23 +1408,6 @@ export function VideoPageMain() {
                             autoPlay
                             className="w-full h-full rounded-lg"
                             poster={videoThumbnail}
-                            onTimeUpdate={(e) => {
-                              setCurrentPlaybackTime(
-                                e.currentTarget.currentTime
-                              );
-                            }}
-                            onEnded={() => {
-                              // Find the index of the current video
-                              const currentIdx = libraryVideos.findIndex(
-                                (v) => v._id === selectedVideo?._id
-                              );
-                              if (
-                                currentIdx !== -1 &&
-                                currentIdx < libraryVideos.length - 1
-                              ) {
-                                selectVideo(libraryVideos[currentIdx + 1]);
-                              }
-                            }}
                           />
                         </>
                       ) : fetchingVideoDetails ? (

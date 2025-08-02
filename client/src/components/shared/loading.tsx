@@ -21,7 +21,7 @@ const Loading = ({
 
   if (fullScreen) {
     return (
-      <div className="flex items-center justify-center min-h-screen w-full">
+      <div className="flex items-center text-inherit justify-center min-h-screen w-full">
         {spinner}
       </div>
     );
