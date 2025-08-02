@@ -15,6 +15,7 @@ export function PricingCard() {
   const isSubscribed = user?.stripePaymentStatus === "paid";
 
   const handleCheckout = async () => {
+    setIsLoading(true);
     if (!user) {
       toast.error("Please log in to continue.");
       return;
@@ -25,7 +26,6 @@ export function PricingCard() {
       return;
     }
 
-    setIsLoading(true);
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -53,6 +53,15 @@ export function PricingCard() {
       setIsLoading(false);
     }
   };
+
+  // * if loading is true
+  if (isLoading) {
+    return (
+      <div className="">
+        <Loading fullScreen />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-[90vh] bg-gradient-to-b bg-transparent">
