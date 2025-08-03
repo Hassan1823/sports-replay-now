@@ -1,264 +1,293 @@
-import { PlayCircleIcon, Loader2 } from "lucide-react";
+import { PlayCircleIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
-import { toast } from "sonner";
+
+interface VideoDetails {
+  name?: string;
+  title?: string;
+  duration?: number;
+  muteVideo?: boolean;
+  category?: { label?: string };
+  thumbnailPath?: string;
+  streamingPlaylists?: { files: { fileUrl: string }[] }[];
+  [key: string]: unknown;
+}
 
 interface TrimSliderWithThumbnailsProps {
   duration: number;
   videoUrl: string;
-  videoThumbnail: string;
-  videoRef: React.RefObject<HTMLVideoElement>;
-  onTrimComplete?: (
-    trimmedBlob: Blob,
-    start: number,
-    end: number
-  ) => Promise<void>;
+  videoId?: string;
+  videoThumbnail?: string;
+  video?: VideoDetails;
+  onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
 }
 
 const THUMB_COUNT = 8;
-const MIN_TRIM_DURATION = 1; // seconds
-const THUMB_WIDTH = 80;
+
+const THUMB_WIDTH = 80; // px, for mobile
 const THUMB_HEIGHT = 45;
 
 const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   duration,
   videoUrl,
-  videoRef,
   videoThumbnail,
   onTrimComplete,
 }) => {
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(duration);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
-  const [status, setStatus] = useState<{
-    phase: "idle" | "generating-thumbs" | "trimming" | "error";
-    message?: string;
-  }>({ phase: "idle" });
+  const [isTrimming, setIsTrimming] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
-  const sliderRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const dragType = useRef<"start" | "end">("start");
+  // Responsive thumbnail size
+  const [thumbSize, setThumbSize] = useState({
+    width: THUMB_WIDTH,
+    height: THUMB_HEIGHT,
+  });
 
-  // Generate thumbnails
+  // Initialize video element
   useEffect(() => {
-    if (!videoUrl || !duration || !videoRef.current) return;
+    if (!videoUrl) return;
 
-    // Update your thumbnail generation code with these changes:
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.src = videoUrl;
+    videoRef.current = video;
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.src = "";
+        videoRef.current = null;
+      }
+    };
+  }, [videoUrl]);
+
+  // Generate thumbnails at intervals
+  useEffect(() => {
+    if (!videoUrl || !duration) return;
 
     const captureThumbnails = async () => {
-      setStatus({
-        phase: "generating-thumbs",
-        message: "Generating preview...",
-      });
       const thumbs: string[] = [];
       const interval = duration / (THUMB_COUNT - 1);
+      const video = document.createElement("video");
+      video.crossOrigin = "anonymous";
+      video.src = videoUrl;
 
-      try {
-        // Create a new video element with CORS enabled
-        const video = document.createElement("video");
-        video.crossOrigin = "anonymous"; // This is crucial
-        video.src = videoUrl + "?crossorigin"; // Some servers need this
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
 
-        // Wait for video to be ready
-        await new Promise<void>((resolve, reject) => {
-          video.addEventListener("loadedmetadata", () => resolve());
-          video.addEventListener("error", (err) => reject(err));
-          video.load();
+      for (let i = 0; i < THUMB_COUNT; i++) {
+        const time = Math.min(duration, Math.round(i * interval));
+        video.currentTime = time;
+        await new Promise((resolve) => {
+          video.onseeked = resolve;
         });
-
-        // Create a canvas for capturing frames
         const canvas = document.createElement("canvas");
-        canvas.width = THUMB_WIDTH;
-        canvas.height = THUMB_HEIGHT;
+        // Use smaller size for low quality thumbnails
+        const lowQWidth = Math.max(thumbSize.width * 0.5, 32);
+        const lowQHeight = Math.max(thumbSize.height * 0.5, 18);
+        canvas.width = lowQWidth;
+        canvas.height = lowQHeight;
         const ctx = canvas.getContext("2d");
-
-        if (!ctx) throw new Error("Could not get canvas context");
-
-        for (let i = 0; i < THUMB_COUNT; i++) {
-          const time = Math.min(duration, i * interval);
-          video.currentTime = time;
-
-          await new Promise<void>((resolve) => {
-            video.addEventListener("seeked", () => resolve(), { once: true });
-          });
-
-          try {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Add error handling for tainted canvas
-            let thumbnailUrl;
-            try {
-              thumbnailUrl = canvas.toDataURL("image/jpeg", 0.7);
-            } catch (error) {
-              // Fallback to a placeholder if we can't export the canvas
-              console.warn(
-                "Could not export canvas, using placeholder:",
-                error
-              );
-              ctx.fillStyle = "#ddd";
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
-              ctx.fillStyle = "#888";
-              ctx.font = "12px Arial";
-              ctx.fillText(`${formatTime(time)}`, 10, 20);
-              thumbnailUrl = canvas.toDataURL();
-            }
-
-            thumbs.push(thumbnailUrl);
-          } catch (drawError) {
-            console.warn("Error drawing video frame:", drawError);
-            // Push a placeholder if we can't draw this frame
-            ctx.fillStyle = "#ddd";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#888";
-            ctx.font = "12px Arial";
-            ctx.fillText(`${formatTime(time)}`, 10, 20);
-            thumbs.push(canvas.toDataURL());
-          }
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          // Use lower quality for JPEG (0.3)
+          thumbs.push(canvas.toDataURL("image/jpeg", 0.3));
         }
-
-        setThumbnails(thumbs);
-        setStatus({ phase: "idle" });
-      } catch (error) {
-        console.error("Error generating thumbnails:", error);
-        setStatus({ phase: "error", message: "Failed to generate preview" });
-
-        // Create placeholder thumbnails if generation fails completely
-        const placeholderThumbs = Array(THUMB_COUNT)
-          .fill("")
-          .map((_, i) => {
-            const canvas = document.createElement("canvas");
-            canvas.width = THUMB_WIDTH;
-            canvas.height = THUMB_HEIGHT;
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              ctx.fillStyle = "#ddd";
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
-              ctx.fillStyle = "#888";
-              ctx.font = "12px Arial";
-              ctx.fillText(`Thumb ${i + 1}`, 10, 20);
-            }
-            return canvas.toDataURL();
-          });
-        setThumbnails(placeholderThumbs);
       }
+      setThumbnails(thumbs);
     };
 
     captureThumbnails();
-  }, [videoUrl, duration, videoRef]);
+  }, [videoUrl, duration, thumbSize]);
 
-  // Handle slider drag
-  const handleDragStart =
-    (type: "start" | "end") => (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault();
-      isDragging.current = true;
-      dragType.current = type;
-
-      document.addEventListener("mousemove", handleDrag);
-      document.addEventListener("mouseup", handleDragEnd);
-      document.addEventListener("touchmove", handleDrag);
-      document.addEventListener("touchend", handleDragEnd);
-    };
-
-  const handleDrag = (e: MouseEvent | TouchEvent) => {
-    if (!isDragging.current || !sliderRef.current) return;
-
-    const rect = sliderRef.current.getBoundingClientRect();
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    let percent = (clientX - rect.left) / rect.width;
-    percent = Math.max(0, Math.min(1, percent));
-
-    if (dragType.current === "start") {
-      const newStart = percent * duration;
-      setStart(Math.min(newStart, end - MIN_TRIM_DURATION));
-
-      // Auto-play from new start position
-      if (videoRef.current) {
-        videoRef.current.currentTime = newStart;
-        videoRef.current.play().catch(console.error);
+  // Handle window resize
+  useEffect(() => {
+    const updateThumbSize = () => {
+      if (window.innerWidth < 640) {
+        setThumbSize({ width: 60, height: 34 });
+      } else if (window.innerWidth < 1024) {
+        setThumbSize({ width: 80, height: 45 });
+      } else {
+        setThumbSize({ width: 120, height: 68 });
       }
-    } else {
-      const newEnd = percent * duration;
-      setEnd(Math.max(newEnd, start + MIN_TRIM_DURATION));
-    }
+    };
+    updateThumbSize();
+    window.addEventListener("resize", updateThumbSize);
+    return () => window.removeEventListener("resize", updateThumbSize);
+  }, []);
+
+  // Touch support for handles
+  const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const slider = (e.target as HTMLElement).parentElement!;
+    const getClientX = (evt: MouseEvent | TouchEvent) =>
+      "touches" in evt ? evt.touches[0].clientX : (evt as MouseEvent).clientX;
+
+    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const rect = slider.getBoundingClientRect();
+      let percent = (getClientX(moveEvent) - rect.left) / rect.width;
+      percent = Math.max(0, Math.min(percent, (end - 1) / duration));
+      const newStart = Math.round(percent * duration);
+      setStart(Math.min(newStart, end - 1));
+    };
+    const onUp = () => {
+      window.removeEventListener(
+        "mousemove",
+        onMove as EventListenerOrEventListenerObject
+      );
+      window.removeEventListener(
+        "mouseup",
+        onUp as EventListenerOrEventListenerObject
+      );
+      window.removeEventListener(
+        "touchmove",
+        onMove as EventListenerOrEventListenerObject
+      );
+      window.removeEventListener(
+        "touchend",
+        onUp as EventListenerOrEventListenerObject
+      );
+    };
+    window.addEventListener(
+      "mousemove",
+      onMove as EventListenerOrEventListenerObject
+    );
+    window.addEventListener(
+      "mouseup",
+      onUp as EventListenerOrEventListenerObject
+    );
+    window.addEventListener(
+      "touchmove",
+      onMove as EventListenerOrEventListenerObject
+    );
+    window.addEventListener(
+      "touchend",
+      onUp as EventListenerOrEventListenerObject
+    );
   };
 
-  const handleDragEnd = () => {
-    isDragging.current = false;
-    document.removeEventListener("mousemove", handleDrag);
-    document.removeEventListener("mouseup", handleDragEnd);
-    document.removeEventListener("touchmove", handleDrag);
-    document.removeEventListener("touchend", handleDragEnd);
+  const handleEndDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const slider = (e.target as HTMLElement).parentElement!;
+    const getClientX = (evt: MouseEvent | TouchEvent) =>
+      "touches" in evt ? evt.touches[0].clientX : (evt as MouseEvent).clientX;
 
-    // Pause video when dragging ends
-    if (videoRef.current) {
-      videoRef.current.pause();
-    }
+    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const rect = slider.getBoundingClientRect();
+      let percent = (getClientX(moveEvent) - rect.left) / rect.width;
+      percent = Math.max((start + 1) / duration, Math.min(percent, 1));
+      const newEnd = Math.round(percent * duration);
+      setEnd(Math.max(newEnd, start + 1));
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove as EventListener);
+      window.removeEventListener("mouseup", onUp as EventListener);
+      window.removeEventListener("touchmove", onMove as EventListener);
+      window.removeEventListener("touchend", onUp as EventListener);
+    };
+    window.addEventListener("mousemove", onMove as EventListener);
+    window.addEventListener("mouseup", onUp as EventListener);
+    window.addEventListener("touchmove", onMove as EventListener);
+    window.addEventListener("touchend", onUp as EventListener);
   };
 
-  // Trim the video
+  // trim video
   const handleTrim = async () => {
-    if (!videoRef.current || !onTrimComplete || end - start < MIN_TRIM_DURATION)
-      return;
+    if (!videoRef.current || isTrimming) return;
 
-    setStatus({ phase: "trimming", message: "Processing video..." });
+    setIsTrimming(true);
+    recordedChunksRef.current = [];
 
     try {
+      // Set up media recorder
       const stream = await captureVideoStream();
-      const mediaRecorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
+      mediaRecorderRef.current = new MediaRecorder(stream);
 
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
 
-      await new Promise<void>((resolve, reject) => {
-        mediaRecorder.onstop = async () => {
-          try {
-            const blob = new Blob(chunks, { type: "video/webm" });
-            await onTrimComplete(blob, start, end);
-            setStatus({ phase: "idle" });
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        };
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/mp4",
+        });
+        console.log("Trimmed video details:", {
+          startTime: start,
+          endTime: end,
+          duration: end - start,
+          blobSize: blob.size,
+          blobType: blob.type,
+        });
 
-        mediaRecorder.start();
-        videoRef.current.currentTime = start;
+        if (onTrimComplete) {
+          onTrimComplete(blob, start, end);
+        }
 
-        videoRef.current.onseeked = () => {
-          videoRef.current?.play();
+        // Clean up
+        stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        setIsTrimming(false);
+      };
 
-          const checkEnd = () => {
-            if (videoRef.current && videoRef.current.currentTime >= end) {
-              mediaRecorder.stop();
-              stream.getTracks().forEach((track) => track.stop());
-            } else {
-              requestAnimationFrame(checkEnd);
-            }
-          };
+      // Start recording
+      mediaRecorderRef.current.start();
 
-          checkEnd();
-        };
+      // Seek to start position
+      videoRef.current.currentTime = start;
+      await new Promise((resolve) => {
+        videoRef.current!.onseeked = resolve;
       });
+
+      // Play the video to record the selected segment
+      videoRef.current.play();
+
+      // Stop recording when we reach the end time
+      const checkTime = () => {
+        if (videoRef.current!.currentTime >= end) {
+          videoRef.current!.pause();
+          mediaRecorderRef.current?.stop();
+        } else {
+          requestAnimationFrame(checkTime);
+        }
+      };
+
+      checkTime();
     } catch (error) {
       console.error("Error trimming video:", error);
-      setStatus({ phase: "error", message: "Failed to trim video" });
+      setIsTrimming(false);
     }
   };
 
-  // Helper to capture video stream
   const captureVideoStream = async (): Promise<MediaStream> => {
-    if (!videoRef.current) throw new Error("Video element not available");
-
-    if ("captureStream" in videoRef.current) {
-      return (videoRef.current as any).captureStream();
+    if (!videoRef.current) {
+      throw new Error("Video element not initialized");
     }
 
-    // Fallback for browsers without captureStream
+    // For browsers that support captureStream
+    if ("captureStream" in videoRef.current) {
+      // Extend the type to include captureStream
+      return (
+        videoRef.current as HTMLVideoElement & {
+          captureStream?: () => MediaStream;
+        }
+      ).captureStream!();
+    }
+
+    // Fallback for browsers that don't support captureStream
     const canvas = document.createElement("canvas");
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Could not get canvas context");
+
+    if (!ctx) {
+      throw new Error("Could not get canvas context");
+    }
 
     const stream = canvas.captureStream();
     const drawFrame = () => {
@@ -267,59 +296,73 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
         requestAnimationFrame(drawFrame);
       }
     };
+
     drawFrame();
     return stream;
   };
 
-  // Format time for display
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
   return (
     <div className="w-full flex flex-col items-center">
-      {/* Time display */}
-      <div className="w-full flex justify-between mb-1 text-sm">
-        <span>{formatTime(start)}</span>
-        <span>
-          {formatTime(end - start)} / {formatTime(duration)}
-        </span>
-        <span>{formatTime(end)}</span>
-      </div>
-
-      {/* Slider with trim button */}
+      {/* Range slider */}
       <div
         className="relative w-full flex items-center gap-2 select-none"
         style={{ height: "auto", maxWidth: "95%", width: "95%" }}
-        ref={sliderRef}
       >
         <Button
           size="default"
           variant="secondary"
-          disabled={status.phase !== "idle" || end - start < MIN_TRIM_DURATION}
+          disabled={end <= start || isTrimming}
           className="z-50 bg-[#858585] rounded-none"
           onClick={handleTrim}
         >
-          {status.phase === "trimming" ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
+          {isTrimming ? (
+            <span>Trimming...</span>
           ) : (
-            <PlayCircleIcon size={40} fill="black" color="#858585" />
+            <>
+              <PlayCircleIcon size={40} fill="black" color="#858585" />
+              {/* Optionally show trim times */}
+              {/* <span className="ml-2">
+                {Math.round(start)}s - {Math.round(end)}s
+              </span> */}
+            </>
           )}
         </Button>
-
         <div
           className="relative flex-1 flex items-center"
-          style={{ height: THUMB_HEIGHT + 8 }}
+          style={{ height: thumbSize.height + 8 }}
         >
-          {/* Thumbnails track as a single image strip */}
+          {/* Thumbnails as slider track */}
           <div
-            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex w-full pointer-events-none"
-            style={{ minWidth: 0, height: THUMB_HEIGHT * 0.6 }}
+            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 flex w-full pointer-events-none space-x-0"
+            style={{
+              minWidth: 0,
+            }}
           >
-            {status.phase === "generating-thumbs" || status.phase === "error"
-              ? Array.from({ length: THUMB_COUNT }).map((_, i) => (
+            {thumbnails.length === THUMB_COUNT
+              ? thumbnails.map((thumb, idx) => (
+                  <img
+                    key={idx}
+                    src={thumb}
+                    alt={`thumb-slider-${idx}`}
+                    className="border-e-2 border-[#878510] object-cover"
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      width: thumbSize.width,
+                      height: thumbSize.height * 0.6,
+                      opacity:
+                        start <= (idx * duration) / (THUMB_COUNT - 1) &&
+                        end >= (idx * duration) / (THUMB_COUNT - 1)
+                          ? 1
+                          : 0.5,
+                      zIndex: 1,
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                    }}
+                    draggable={false}
+                  />
+                ))
+              : Array.from({ length: THUMB_COUNT }).map((_, i) => (
                   <img
                     key={i}
                     src={videoThumbnail}
@@ -336,27 +379,9 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
                     }}
                     draggable={false}
                   />
-                ))
-              : thumbnails.map((thumb, i) => (
-                  <img
-                    key={i}
-                    src={thumb}
-                    alt={`Video thumbnail ${i + 1}`}
-                    style={{
-                      width: `calc(100% / ${THUMB_COUNT})`,
-                      height: THUMB_HEIGHT * 0.6,
-                      objectFit: "cover",
-                      borderRadius: 4,
-                      opacity: 1,
-                      zIndex: 1,
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                    draggable={false}
-                  />
                 ))}
           </div>
-
+          {/* Handles */}
           {/* Start handle */}
           <div
             role="slider"
@@ -373,18 +398,19 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               cursor: "ew-resize",
               transform: "translate(-50%, -50%)",
               background: "white",
+              // borderRadius: 8,
               border: "4px solid #878510",
               boxShadow: "0 0 2px #878510",
-              height: THUMB_HEIGHT * 0.6,
+              transition: "background 0.2s",
+              touchAction: "none",
+              height: thumbSize.height * 0.6, // match the thumbnail height
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
-            onMouseDown={handleDragStart("start")}
-            onTouchStart={handleDragStart("start")}
+            onMouseDown={handleStartDrag}
+            onTouchStart={handleStartDrag}
           />
-
-          {/* End handle */}
           <div
             role="slider"
             tabIndex={0}
@@ -397,20 +423,22 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               top: "50%",
               transform: "translate(-50%, -50%)",
               width: 16,
-              height: THUMB_HEIGHT * 0.6,
+              height: thumbSize.height * 0.6, // match the thumbnail height
               zIndex: 2,
               cursor: "ew-resize",
               background: "white",
+              // borderRadius: 8,
               border: "4px solid #878510",
               boxShadow: "0 0 2px #878510",
+              transition: "background 0.2s",
+              touchAction: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
-            onMouseDown={handleDragStart("end")}
-            onTouchStart={handleDragStart("end")}
+            onMouseDown={handleEndDrag}
+            onTouchStart={handleEndDrag}
           />
-
           {/* Highlighted selection */}
           <div
             className="absolute top-1/2 -translate-y-1/2 bg-blue-200/50 opacity-30 pointer-events-none"
@@ -419,18 +447,15 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               width: `${((end - start) / duration) * 100}%`,
               zIndex: 1,
               borderRadius: 8,
-              height: THUMB_HEIGHT * 0.6,
+              height: thumbSize.height * 0.6, // match the thumbnail height
             }}
           />
         </div>
       </div>
-
-      {/* Status message */}
-      {status.phase === "error" && (
-        <div className="text-red-600 text-sm mt-1">{status.message}</div>
-      )}
     </div>
   );
 };
 
 export default TrimSliderWithThumbnails;
+
+// ****************************************
