@@ -845,6 +845,12 @@ export function VideoPageMain() {
     error?: string;
   } | null>(null);
 
+  const [trimPreview, setTrimPreview] = useState<{
+    start: number;
+    end: number;
+    active: boolean;
+  }>({ start: 0, end: 0, active: false });
+
   // Add this function to handle the video replacement
   const handleReplaceVideo = async (videoId: string, blob: Blob) => {
     if (!videoId || !blob) return;
@@ -1320,18 +1326,24 @@ export function VideoPageMain() {
                                   videoThumbnail={videoThumbnail}
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
+                                  onTrimChange={(start, end) => {
+                                    setTrimPreview({
+                                      start,
+                                      end,
+                                      active: true,
+                                    });
+                                    // Seek the video to the new start time
+                                    if (videoRef.current) {
+                                      videoRef.current.currentTime = start;
+                                    }
+                                  }}
                                   onTrimComplete={async (blob, start, end) => {
                                     setTrimmedVideo({ blob, start, end });
-                                    console.log(
-                                      "Trimmed video saved to state:",
-                                      {
-                                        blob,
-                                        startTime: start,
-                                        endTime: end,
-                                        duration: end - start,
-                                      }
-                                    );
-
+                                    setTrimPreview({
+                                      start: 0,
+                                      end: 0,
+                                      active: false,
+                                    });
                                     if (selectedVideo?._id) {
                                       await handleReplaceVideo(
                                         selectedVideo._id,
@@ -1350,27 +1362,43 @@ export function VideoPageMain() {
                             className="w-full h-full rounded-lg"
                             poster={videoThumbnail}
                             onTimeUpdate={(e) => {
-                              setCurrentPlaybackTime(
-                                e.currentTarget.currentTime
-                              );
+                              const currentTime = e.currentTarget.currentTime;
+                              setCurrentPlaybackTime(currentTime);
+
+                              // If in trim preview mode and we reach the end, loop back to start
+                              if (
+                                trimPreview.active &&
+                                currentTime >= trimPreview.end
+                              ) {
+                                e.currentTarget.currentTime = trimPreview.start;
+                              }
                             }}
                             onEnded={() => {
-                              // Find the index of the current video
-                              const currentIdx = libraryVideos.findIndex(
-                                (v) => v._id === selectedVideo?._id
-                              );
-                              if (
-                                currentIdx !== -1 &&
-                                currentIdx < libraryVideos.length - 1
-                              ) {
-                                selectVideo(libraryVideos[currentIdx + 1]);
+                              if (trimPreview.active) {
+                                // Loop the trimmed section
+                                if (videoRef.current) {
+                                  videoRef.current.currentTime =
+                                    trimPreview.start;
+                                  videoRef.current.play();
+                                }
+                              } else {
+                                // Original behavior - go to next video
+                                const currentIdx = libraryVideos.findIndex(
+                                  (v) => v._id === selectedVideo?._id
+                                );
+                                if (
+                                  currentIdx !== -1 &&
+                                  currentIdx < libraryVideos.length - 1
+                                ) {
+                                  selectVideo(libraryVideos[currentIdx + 1]);
+                                }
                               }
                             }}
                           />
                         </>
                       ) : fetchingVideoDetails ? (
                         <div className="relative w-full h-full flex flex-col items-center justify-center">
-                          <Loading size={24} />
+                          <Loading white size={24} />
                           <span className="text-white bg-black bg-opacity-50 p-2 rounded mt-2">
                             Processing video, please wait...
                           </span>

@@ -1,6 +1,7 @@
 import { PlayCircleIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
+import Loading from "../shared/loading";
 
 interface VideoDetails {
   name?: string;
@@ -19,6 +20,7 @@ interface TrimSliderWithThumbnailsProps {
   videoId?: string;
   videoThumbnail?: string;
   video?: VideoDetails;
+  onTrimChange?: (start: number, end: number) => void; // Add this
   onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
 }
 
@@ -30,6 +32,7 @@ const THUMB_HEIGHT = 45;
 const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   duration,
   videoUrl,
+  onTrimChange, // Add this
   videoThumbnail,
   onTrimComplete,
 }) => {
@@ -133,6 +136,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       percent = Math.max(0, Math.min(percent, (end - 1) / duration));
       const newStart = Math.round(percent * duration);
       setStart(Math.min(newStart, end - 1));
+      if (onTrimChange) onTrimChange(Math.min(newStart, end - 1), end); // Add this
     };
     const onUp = () => {
       window.removeEventListener(
@@ -182,6 +186,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       percent = Math.max((start + 1) / duration, Math.min(percent, 1));
       const newEnd = Math.round(percent * duration);
       setEnd(Math.max(newEnd, start + 1));
+      if (onTrimChange) onTrimChange(start, Math.max(newEnd, start + 1)); // Add this
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove as EventListener);
@@ -316,7 +321,9 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           onClick={handleTrim}
         >
           {isTrimming ? (
-            <span>Trimming...</span>
+            <span>
+              <Loading size={20} white />
+            </span>
           ) : (
             <>
               <PlayCircleIcon size={40} fill="black" color="#858585" />
