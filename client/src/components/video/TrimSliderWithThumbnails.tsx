@@ -2,6 +2,7 @@ import { PlayCircleIcon } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import Loading from "../shared/loading";
+import { convertWebMToMP4, getVideoMetadata } from "../../utils/videoConverter";
 
 interface VideoDetails {
   name?: string;
@@ -20,19 +21,18 @@ interface TrimSliderWithThumbnailsProps {
   videoId?: string;
   videoThumbnail?: string;
   video?: VideoDetails;
-  onTrimChange?: (start: number, end: number) => void; // Add this
+  onTrimChange?: (start: number, end: number) => void;
   onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
 }
 
 const THUMB_COUNT = 8;
-
-const THUMB_WIDTH = 80; // px, for mobile
+const THUMB_WIDTH = 80;
 const THUMB_HEIGHT = 45;
 
 const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   duration,
   videoUrl,
-  onTrimChange, // Add this
+  onTrimChange,
   videoThumbnail,
   onTrimComplete,
 }) => {
@@ -40,9 +40,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   const [end, setEnd] = useState(duration);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [isTrimming, setIsTrimming] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Responsive thumbnail size
   const [thumbSize, setThumbSize] = useState({
@@ -56,56 +59,87 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 
     const video = document.createElement("video");
     video.crossOrigin = "anonymous";
+    video.muted = true; // Must be muted for captureStream to work
+    video.playsInline = true;
+    video.preload = "metadata";
+    
+    const handleLoadedMetadata = () => {
+      console.log("Video loaded metadata:", {
+        duration: video.duration,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        readyState: video.readyState
+      });
+      setIsVideoReady(true);
+    };
+
+    const handleError = (e: Event) => {
+      console.error("Video loading error:", e);
+      setIsVideoReady(false);
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('error', handleError);
     video.src = videoUrl;
     videoRef.current = video;
 
     return () => {
       if (videoRef.current) {
+        videoRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        videoRef.current.removeEventListener('error', handleError);
         videoRef.current.src = "";
         videoRef.current = null;
       }
+      setIsVideoReady(false);
     };
   }, [videoUrl]);
 
   // Generate thumbnails at intervals
   useEffect(() => {
-    if (!videoUrl || !duration) return;
+    if (!videoUrl || !duration || !isVideoReady) return;
 
     const captureThumbnails = async () => {
       const thumbs: string[] = [];
       const interval = duration / (THUMB_COUNT - 1);
       const video = document.createElement("video");
       video.crossOrigin = "anonymous";
-      video.src = videoUrl;
+      video.muted = true;
+      video.playsInline = true;
 
-      await new Promise((resolve) => {
-        video.onloadedmetadata = resolve;
-      });
-
-      for (let i = 0; i < THUMB_COUNT; i++) {
-        const time = Math.min(duration, Math.round(i * interval));
-        video.currentTime = time;
-        await new Promise((resolve) => {
-          video.onseeked = resolve;
+      try {
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = resolve;
+          video.onerror = reject;
+          video.src = videoUrl;
         });
-        const canvas = document.createElement("canvas");
-        // Use smaller size for low quality thumbnails
-        const lowQWidth = Math.max(thumbSize.width * 0.5, 32);
-        const lowQHeight = Math.max(thumbSize.height * 0.5, 18);
-        canvas.width = lowQWidth;
-        canvas.height = lowQHeight;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          // Use lower quality for JPEG (0.3)
-          thumbs.push(canvas.toDataURL("image/jpeg", 0.3));
+
+        for (let i = 0; i < THUMB_COUNT; i++) {
+          const time = Math.min(duration, Math.round(i * interval));
+          video.currentTime = time;
+          await new Promise((resolve) => {
+            video.onseeked = resolve;
+          });
+          
+          const canvas = document.createElement("canvas");
+          const lowQWidth = Math.max(thumbSize.width * 0.5, 32);
+          const lowQHeight = Math.max(thumbSize.height * 0.5, 18);
+          canvas.width = lowQWidth;
+          canvas.height = lowQHeight;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            thumbs.push(canvas.toDataURL("image/jpeg", 0.3));
+          }
         }
+        setThumbnails(thumbs);
+      } catch (error) {
+        console.error("Error capturing thumbnails:", error);
+        setThumbnails([]);
       }
-      setThumbnails(thumbs);
     };
 
     captureThumbnails();
-  }, [videoUrl, duration, thumbSize]);
+  }, [videoUrl, duration, thumbSize, isVideoReady]);
 
   // Handle window resize
   useEffect(() => {
@@ -136,42 +170,18 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       percent = Math.max(0, Math.min(percent, (end - 1) / duration));
       const newStart = Math.round(percent * duration);
       setStart(Math.min(newStart, end - 1));
-      if (onTrimChange) onTrimChange(Math.min(newStart, end - 1), end); // Add this
+      if (onTrimChange) onTrimChange(Math.min(newStart, end - 1), end);
     };
     const onUp = () => {
-      window.removeEventListener(
-        "mousemove",
-        onMove as EventListenerOrEventListenerObject
-      );
-      window.removeEventListener(
-        "mouseup",
-        onUp as EventListenerOrEventListenerObject
-      );
-      window.removeEventListener(
-        "touchmove",
-        onMove as EventListenerOrEventListenerObject
-      );
-      window.removeEventListener(
-        "touchend",
-        onUp as EventListenerOrEventListenerObject
-      );
+      window.removeEventListener("mousemove", onMove as EventListener);
+      window.removeEventListener("mouseup", onUp as EventListener);
+      window.removeEventListener("touchmove", onMove as EventListener);
+      window.removeEventListener("touchend", onUp as EventListener);
     };
-    window.addEventListener(
-      "mousemove",
-      onMove as EventListenerOrEventListenerObject
-    );
-    window.addEventListener(
-      "mouseup",
-      onUp as EventListenerOrEventListenerObject
-    );
-    window.addEventListener(
-      "touchmove",
-      onMove as EventListenerOrEventListenerObject
-    );
-    window.addEventListener(
-      "touchend",
-      onUp as EventListenerOrEventListenerObject
-    );
+    window.addEventListener("mousemove", onMove as EventListener);
+    window.addEventListener("mouseup", onUp as EventListener);
+    window.addEventListener("touchmove", onMove as EventListener);
+    window.addEventListener("touchend", onUp as EventListener);
   };
 
   const handleEndDrag = (e: React.MouseEvent | React.TouchEvent) => {
@@ -186,7 +196,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       percent = Math.max((start + 1) / duration, Math.min(percent, 1));
       const newEnd = Math.round(percent * duration);
       setEnd(Math.max(newEnd, start + 1));
-      if (onTrimChange) onTrimChange(start, Math.max(newEnd, start + 1)); // Add this
+      if (onTrimChange) onTrimChange(start, Math.max(newEnd, start + 1));
     };
     const onUp = () => {
       window.removeEventListener("mousemove", onMove as EventListener);
@@ -200,111 +210,155 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     window.addEventListener("touchend", onUp as EventListener);
   };
 
-  // trim video
+  // Enhanced video trimming with proper stream capture
   const handleTrim = async () => {
-    if (!videoRef.current || isTrimming) return;
+    if (!videoRef.current || isTrimming || !isVideoReady) {
+      console.error("Cannot trim: video not ready or already trimming");
+      return;
+    }
 
     setIsTrimming(true);
     recordedChunksRef.current = [];
 
     try {
-      // Set up media recorder
-      const stream = await captureVideoStream();
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      console.log("Starting video trim:", { start, end, duration: end - start });
+      
+      // Create canvas for video capture
+      const canvas = document.createElement("canvas");
+      const video = videoRef.current;
+      
+      // Set canvas size to match video dimensions
+      canvas.width = video.videoWidth || 1920;
+      canvas.height = video.videoHeight || 1080;
+      canvasRef.current = canvas;
+      
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Could not get canvas context");
+      }
 
-      mediaRecorderRef.current.ondataavailable = (e) => {
+      // Get stream from canvas
+      const stream = canvas.captureStream(30); // 30 FPS
+      
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9'
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           recordedChunksRef.current.push(e.data);
         }
       };
 
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, {
-          type: "video/mp4",
-        });
-        console.log("Trimmed video details:", {
-          startTime: start,
-          endTime: end,
-          duration: end - start,
-          blobSize: blob.size,
-          blobType: blob.type,
-        });
+      mediaRecorder.onstop = async () => {
+        try {
+          console.log("MediaRecorder stopped, chunks:", recordedChunksRef.current.length);
+          
+          // Convert WebM to MP4 using FFmpeg.wasm or similar
+          // For now, we'll use the WebM blob directly
+          const webmBlob = new Blob(recordedChunksRef.current, {
+            type: "video/webm"
+          });
+          
+          console.log("WebM blob created:", {
+            size: webmBlob.size,
+            type: webmBlob.type,
+            startTime: start,
+            endTime: end,
+            duration: end - start
+          });
 
-        if (onTrimComplete) {
-          onTrimComplete(blob, start, end);
+                     // Convert WebM to MP4 using enhanced utility function
+           const mp4Blob = await handleWebMToMP4Conversion(webmBlob);
+          
+          if (onTrimComplete) {
+            onTrimComplete(mp4Blob, start, end);
+          }
+        } catch (error) {
+          console.error("Error processing recorded video:", error);
+        } finally {
+          // Clean up
+          stream.getTracks().forEach((track) => track.stop());
+          mediaRecorderRef.current = null;
+          setIsTrimming(false);
         }
-
-        // Clean up
-        stream.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-        setIsTrimming(false);
       };
 
       // Start recording
-      mediaRecorderRef.current.start();
+      mediaRecorder.start();
 
-      // Seek to start position
-      videoRef.current.currentTime = start;
+      // Seek to start position and wait for it to be ready
+      video.currentTime = start;
       await new Promise((resolve) => {
-        videoRef.current!.onseeked = resolve;
+        video.onseeked = resolve;
       });
 
-      // Play the video to record the selected segment
-      videoRef.current.play();
-
-      // Stop recording when we reach the end time
-      const checkTime = () => {
-        if (videoRef.current!.currentTime >= end) {
-          videoRef.current!.pause();
-          mediaRecorderRef.current?.stop();
-        } else {
-          requestAnimationFrame(checkTime);
+      // Start drawing frames to canvas
+      let startTime = Date.now();
+      const drawFrame = () => {
+        if (!video || !ctx || !canvas) return;
+        
+        const currentTime = video.currentTime;
+        const elapsed = (Date.now() - startTime) / 1000;
+        
+        // Draw current video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Check if we've reached the end time
+        if (currentTime >= end || elapsed >= (end - start)) {
+          console.log("Reached end time, stopping recording");
+          mediaRecorder.stop();
+          return;
         }
+        
+        // Continue drawing frames
+        animationFrameRef.current = requestAnimationFrame(drawFrame);
       };
 
-      checkTime();
+      // Start playing and drawing
+      await video.play();
+      drawFrame();
+      
     } catch (error) {
       console.error("Error trimming video:", error);
       setIsTrimming(false);
     }
   };
 
-  const captureVideoStream = async (): Promise<MediaStream> => {
-    if (!videoRef.current) {
-      throw new Error("Video element not initialized");
+  // Enhanced WebM to MP4 conversion using utility function
+  const handleWebMToMP4Conversion = async (webmBlob: Blob): Promise<Blob> => {
+    try {
+      console.log("Converting WebM to MP4 using utility function");
+      const convertedBlob = await convertWebMToMP4(webmBlob, {
+        quality: 'medium',
+        frameRate: 30
+      });
+      
+      // Get metadata to verify conversion
+      const metadata = await getVideoMetadata(convertedBlob);
+      console.log("Converted video metadata:", metadata);
+      
+      return convertedBlob;
+    } catch (error) {
+      console.error("Error converting WebM to MP4:", error);
+      // Fallback to original blob
+      return webmBlob;
     }
+  };
 
-    // For browsers that support captureStream
-    if ("captureStream" in videoRef.current) {
-      // Extend the type to include captureStream
-      return (
-        videoRef.current as HTMLVideoElement & {
-          captureStream?: () => MediaStream;
-        }
-      ).captureStream!();
-    }
-
-    // Fallback for browsers that don't support captureStream
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) {
-      throw new Error("Could not get canvas context");
-    }
-
-    const stream = canvas.captureStream();
-    const drawFrame = () => {
-      if (videoRef.current && ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        requestAnimationFrame(drawFrame);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
       }
     };
-
-    drawFrame();
-    return stream;
-  };
+  }, []);
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -316,7 +370,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
         <Button
           size="default"
           variant="secondary"
-          disabled={end <= start || isTrimming}
+          disabled={end <= start || isTrimming || !isVideoReady}
           className="z-50 bg-[#858585] rounded-none"
           onClick={handleTrim}
         >
@@ -327,10 +381,9 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           ) : (
             <>
               <PlayCircleIcon size={40} fill="black" color="#858585" />
-              {/* Optionally show trim times */}
-              {/* <span className="ml-2">
+              <span className="ml-2 text-xs">
                 {Math.round(start)}s - {Math.round(end)}s
-              </span> */}
+              </span>
             </>
           )}
         </Button>
@@ -405,12 +458,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               cursor: "ew-resize",
               transform: "translate(-50%, -50%)",
               background: "white",
-              // borderRadius: 8,
               border: "4px solid #878510",
               boxShadow: "0 0 2px #878510",
               transition: "background 0.2s",
               touchAction: "none",
-              height: thumbSize.height * 0.6, // match the thumbnail height
+              height: thumbSize.height * 0.6,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -430,11 +482,10 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               top: "50%",
               transform: "translate(-50%, -50%)",
               width: 16,
-              height: thumbSize.height * 0.6, // match the thumbnail height
+              height: thumbSize.height * 0.6,
               zIndex: 2,
               cursor: "ew-resize",
               background: "white",
-              // borderRadius: 8,
               border: "4px solid #878510",
               boxShadow: "0 0 2px #878510",
               transition: "background 0.2s",
@@ -454,7 +505,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               width: `${((end - start) / duration) * 100}%`,
               zIndex: 1,
               borderRadius: 8,
-              height: thumbSize.height * 0.6, // match the thumbnail height
+              height: thumbSize.height * 0.6,
             }}
           />
         </div>
@@ -464,5 +515,3 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 };
 
 export default TrimSliderWithThumbnails;
-
-// ****************************************
