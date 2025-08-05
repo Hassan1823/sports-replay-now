@@ -1349,34 +1349,22 @@ export function VideoPageMain() {
         {/* <div className="flex-1 flex flex-col h-full"> */}
         <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
           <div className="flex-1 p-4 border-b aspect-video">
-            {fetchingVideoDetails || replacingVideo?.status === "uploading" ? (
-              <div className="h-full flex items-center justify-center">
-                <Loading />
-                {/* {replacingVideo &&
-                  replacingVideo.videoId === selectedVideo?._id && (
-                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-70 text-white p-2 rounded">
-                      {replacingVideo.status === "uploading" && (
-                        <div className="flex items-center gap-2">
-                          <Loading size={16} />
-                          <span>Replacing video...</span>
-                        </div>
-                      )}
-                      {replacingVideo.status === "success" && (
-                        <div className="flex items-center gap-2 text-green-400">
-                          <CircleCheck className="w-4 h-4" />
-                          <span>Video replaced successfully</span>
-                        </div>
-                      )}
-                      {replacingVideo.status === "error" && (
-                        <div className="flex items-center gap-2 text-red-400">
-                          <CircleX className="w-4 h-4" />
-                          <span>
-                            {replacingVideo.error || "Error replacing video"}
-                          </span>
-                        </div>
-                      )}
+            {fetchingVideoDetails ||
+            replacingVideo?.status === "uploading" ||
+            (libraryVideos.length === 0 &&
+              selectedGameId &&
+              activeUploads[selectedGameId]?.files.length > 0) ? (
+              <div className="h-full flex flex-col">
+                {/* Video Player Skeleton */}
+                <div className="bg-gray-200 rounded-lg aspect-video animate-pulse flex flex-col items-center justify-center relative">
+                  <div className="w-full h-full bg-gray-300 rounded-lg flex items-center justify-center animate-pulse">
+                    <div className="text-center">
+                      <div className="w-full h-12 bg-gray-400 rounded mx-auto mb-4 animate-pulse"></div>
+                      <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 animate-pulse"></div>
+                      <div className="h-3 bg-gray-400 rounded w-32 mx-auto animate-pulse"></div>
                     </div>
-                  )} */}
+                  </div>
+                </div>
               </div>
             ) : selectedVideo ? (
               <div className="h-full flex flex-col">
@@ -1531,14 +1519,16 @@ export function VideoPageMain() {
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center bg-gray-100 rounded-lg">
-                <div className="bg-gray-200 w-full aspect-video flex items-center justify-center rounded-lg">
-                  <span className="text-gray-500">No video selected</span>
-                </div>
-                <div className="mt-4 text-center">
-                  <h2 className="text-lg font-semibold">No Video Selected</h2>
-                  <p className="text-sm text-gray-500">
-                    Select a video from the library to play
-                  </p>
+                {/* Video Player Skeleton with "No video selected" message */}
+                <div className="bg-gray-200 w-full aspect-video flex items-center justify-center rounded-lg relative">
+                  <div className="w-full h-full bg-gray-300 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-full h-12 bg-gray-400 rounded mx-auto mb-4 "></div>
+                      <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 "></div>
+                      <div className="h-3 bg-gray-400 rounded w-32 mx-auto "></div>
+                      <h2 className="text-base font-medium mb-2">No Video</h2>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
