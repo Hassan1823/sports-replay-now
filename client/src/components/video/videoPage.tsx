@@ -904,7 +904,7 @@ export function VideoPageMain() {
   }>({ start: 0, end: 0, active: false });
 
   // Add this function to handle the video replacement
-  const handleReplaceVideo = async (videoId: string, blob: Blob) => {
+  const handleReplaceVideo = async (videoId: string, blob: Blob, startTime?: number, endTime?: number) => {
     if (!videoId || !blob) return;
 
     setReplacingVideo({
@@ -913,19 +913,57 @@ export function VideoPageMain() {
     });
 
     try {
-      // Convert Blob to File
-      const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
-        type: "video/mp4",
+      // Create a proper file name with duration info
+      const duration = startTime !== undefined && endTime !== undefined 
+        ? Math.round(endTime - startTime) 
+        : Math.round(trimmedVideo.end - trimmedVideo.start);
+      
+      const originalTitle = selectedVideo?.title || "trimmed-video";
+      const timestamp = Date.now();
+      
+      // Determine file extension based on blob type
+      let extension = "mp4";
+      if (blob.type.includes("webm")) {
+        extension = "webm";
+      } else if (blob.type.includes("ogg")) {
+        extension = "ogg";
+      }
+      
+      const fileName = `${originalTitle}-trimmed-${duration}s-${timestamp}.${extension}`;
+      
+      // Convert Blob to File with proper metadata
+      const file = new File([blob], fileName, {
+        type: blob.type || "video/mp4",
+        lastModified: Date.now(),
+      });
+
+      console.log("Uploading trimmed video:", {
+        fileName,
+        fileSize: file.size,
+        fileType: file.type,
+        duration: duration,
+        startTime,
+        endTime,
       });
 
       // Call the updateVideoFile API
       const response = await updateVideoFile(videoId, file);
 
       if (response.success) {
+        // Store current playback time before refresh
+        const currentTime = videoRef.current?.currentTime || 0;
+        
         // Refresh the video list
         if (selectedSeasonId && selectedGameId) {
           await handleFetchGamesVideos(selectedSeasonId, selectedGameId);
         }
+
+        // Restore playback position after a short delay
+        setTimeout(() => {
+          if (videoRef.current && currentTime > 0) {
+            videoRef.current.currentTime = Math.min(currentTime, duration);
+          }
+        }, 1000);
 
         setReplacingVideo({
           videoId,
@@ -933,6 +971,9 @@ export function VideoPageMain() {
         });
 
         toast.success("Video successfully replaced with trimmed version");
+        
+        // Clear the trimmed video state
+        setTrimmedVideo({ blob: null, start: 0, end: 0 });
       } else {
         throw new Error(response.message || "Failed to update video");
       }
@@ -945,6 +986,7 @@ export function VideoPageMain() {
         error: errorMessage,
       });
       toast.error(`Failed to replace video: ${errorMessage}`);
+      console.error("Video replacement error:", error);
     }
   };
 
@@ -1411,7 +1453,9 @@ export function VideoPageMain() {
                                     if (selectedVideo?._id) {
                                       await handleReplaceVideo(
                                         selectedVideo._id,
-                                        blob
+                                        blob,
+                                        start,
+                                        end
                                       );
                                     }
                                   }}

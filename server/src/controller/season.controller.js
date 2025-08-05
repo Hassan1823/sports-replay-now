@@ -338,35 +338,110 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       // Continue even if deletion fails (might be already deleted)
     }
 
-    // Get video duration for the new video
+    // Enhanced video duration calculation
     const getVideoDuration = (filePath) =>
       new Promise((resolve, reject) => {
+        // Ensure the file exists and has content
+        if (!fs.existsSync(filePath)) {
+          console.error("Video file does not exist:", filePath);
+          return resolve("");
+        }
+
+        const stats = fs.statSync(filePath);
+        if (stats.size === 0) {
+          console.error("Video file is empty:", filePath);
+          return resolve("");
+        }
+
+        console.log("Analyzing video file:", filePath, "Size:", stats.size);
+
         ffmpeg.ffprobe(filePath, (err, metadata) => {
-          if (err) return reject(err);
-          if (metadata && metadata.format && metadata.format.duration) {
-            // Format duration as HH:MM:SS
-            const totalSeconds = Math.floor(metadata.format.duration);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            const formatted =
-              (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
-              String(minutes).padStart(2, "0") +
-              ":" +
-              String(seconds).padStart(2, "0");
-            resolve(formatted);
-          } else {
+          if (err) {
+            console.error("FFprobe error:", err);
+            return resolve(""); // Return empty string instead of rejecting
+          }
+          
+          try {
+            if (metadata && metadata.format && metadata.format.duration) {
+              const duration = metadata.format.duration;
+              console.log("Raw duration from ffprobe:", duration);
+              
+              // Format duration as HH:MM:SS
+              const totalSeconds = Math.floor(duration);
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor((totalSeconds % 3600) / 60);
+              const seconds = totalSeconds % 60;
+              
+              const formatted =
+                (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
+                String(minutes).padStart(2, "0") +
+                ":" +
+                String(seconds).padStart(2, "0");
+              
+              console.log("Formatted duration:", formatted);
+              resolve(formatted);
+            } else {
+              console.error("No duration found in metadata:", metadata);
+              resolve("");
+            }
+          } catch (parseError) {
+            console.error("Error parsing duration:", parseError);
             resolve("");
           }
         });
       });
 
+    // Calculate video duration with better error handling
     let videoDuration = "";
     try {
+      console.log("Calculating duration for file:", videoFile.path);
       videoDuration = await getVideoDuration(videoFile.path);
+      console.log("Calculated video duration:", videoDuration);
+      
+      // If duration calculation failed, try alternative method
+      if (!videoDuration) {
+        console.log("Attempting alternative duration calculation...");
+        
+        // Alternative method using ffmpeg
+        await new Promise((resolve, reject) => {
+          ffmpeg(videoFile.path)
+            .ffprobe((err, metadata) => {
+              if (err) {
+                console.error("Alternative ffprobe error:", err);
+                resolve();
+                return;
+              }
+              
+              if (metadata?.streams) {
+                const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
+                if (videoStream && videoStream.duration) {
+                  const totalSeconds = Math.floor(parseFloat(videoStream.duration));
+                  const hours = Math.floor(totalSeconds / 3600);
+                  const minutes = Math.floor((totalSeconds % 3600) / 60);
+                  const seconds = totalSeconds % 60;
+                  
+                  videoDuration =
+                    (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
+                    String(minutes).padStart(2, "0") +
+                    ":" +
+                    String(seconds).padStart(2, "0");
+                  
+                  console.log("Alternative duration calculation result:", videoDuration);
+                }
+              }
+              resolve();
+            });
+        });
+      }
     } catch (err) {
       console.error("Error getting video duration:", err);
       videoDuration = "";
+    }
+
+    // If still no duration, set a default or keep the existing one
+    if (!videoDuration) {
+      console.warn("Could not determine video duration, keeping existing duration");
+      videoDuration = existingVideo.videoDuration || "";
     }
 
     // Prepare upload to PeerTube with the same metadata as before
@@ -386,6 +461,11 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       existingVideo.tags.forEach((tag) => formData.append("tags[]", tag));
     }
 
+    // Ensure file exists before creating read stream
+    if (!fs.existsSync(videoFile.path)) {
+      throw new Error("Video file not found for upload");
+    }
+
     formData.append("videofile", fs.createReadStream(videoFile.path), {
       filename: videoFile.originalname,
       contentType: videoFile.mimetype,
@@ -395,6 +475,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
     // Upload new video to PeerTube
     let uploadResponse;
     try {
+      console.log("Uploading video to PeerTube...");
       uploadResponse = await axios.post(
         `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/upload`,
         formData,
@@ -408,6 +489,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
           timeout: 30 * 60 * 1000,
         }
       );
+      console.log("PeerTube upload successful");
     } catch (error) {
       console.error("PeerTube upload failed:", error);
       // Clean up uploaded file
@@ -460,7 +542,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
         filePath: uploadResponse.data.video.url,
         duration: uploadResponse.data.video.duration,
         videoThumbnail: thumbnailPath || previewPath || "",
-        videoDuration: videoDuration || existingVideo.videoDuration, // Use new duration or keep existing
+        videoDuration: videoDuration, // Use the calculated duration
         // Keep the original muteVideo status
         $setOnInsert: { muteVideo: existingVideo.muteVideo },
       },
@@ -475,6 +557,8 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
     } catch (cleanupError) {
       console.error("Error cleaning up files:", cleanupError);
     }
+
+    console.log("Video update completed successfully with duration:", videoDuration);
 
     return res.status(200).json({
       success: true,
