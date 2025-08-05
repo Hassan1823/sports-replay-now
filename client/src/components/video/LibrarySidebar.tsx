@@ -3,12 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   CircleX,
@@ -85,10 +79,6 @@ export function LibrarySidebar({
   } | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
-  // Debug: Log the seasons data received
-  console.log("LibrarySidebar - seasons received:", seasons);
-  console.log("LibrarySidebar - seasons length:", seasons?.length);
-
   const handleDragStart = (
     e: React.DragEvent,
     type: "season" | "game" | "video",
@@ -138,168 +128,184 @@ export function LibrarySidebar({
   };
 
   return (
-    <div className="fixed top-0 right-0 h-full w-[70vw] md:w-[25vw] bg-white shadow-lg z-50 flex flex-col border-l border-gray-200">
-      <div className="flex justify-between items-center mt-2 py-6 px-4 border-b">
-        <span className="font-semibold text-lg">Library</span>
-        <Button onClick={onClose} variant="ghost" size="icon">
-          <CircleX className="h-6 w-6" />
-        </Button>
-      </div>
+    <div className="fixed inset-0 z-50">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-transparent" onClick={onClose} />
 
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-2">
-          {seasons.length === 0 ? (
-            <div className="text-center text-gray-500 py-8">
-              No seasons found
-            </div>
-          ) : (
-            seasons.map((season) => (
-              <div key={season.id}>
-                <Card
-                  className={`cursor-pointer hover:bg-gray-50 transition-colors ${
-                    dragOverTarget === season.id
-                      ? "bg-blue-100 border-blue-300"
-                      : ""
-                  } ${
-                    draggedItem?.type === "season" &&
-                    draggedItem?.id === season.id
-                      ? "opacity-50"
-                      : ""
-                  }`}
-                  draggable
-                  onDragStart={(e) =>
-                    handleDragStart(e, "season", season.id, season)
-                  }
-                  onDragOver={(e) => handleDragOver(e, season.id)}
-                  onDragLeave={(e) => setDragOverTarget(null)}
-                  onDrop={(e) => handleDrop(e, "season", season.id)}
-                >
-                  <CardContent className="p-3">
+      {/* Sidebar */}
+      <div className="absolute right-0 top-0 h-full w-[25%] shadow-2xl flex flex-col bg-white">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-4 border-b border-gray-300">
+          <div className="flex justify-between items-center">
+            <span className="font-bold text-gray-800 text-lg flex items-center gap-2">
+              <Folder className="h-5 w-5 text-gray-600" />
+              Library
+            </span>
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="icon"
+              className="text-gray-600 hover:bg-gray-300/50 rounded-full transition-all duration-200"
+            >
+              <CircleX className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-2 bg-white">
+          <div className="space-y-2">
+            {seasons.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">
+                <Folder className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-lg font-medium">No seasons found</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Start by creating your first season
+                </p>
+              </div>
+            ) : (
+              seasons.map((season) => (
+                <div key={season.id}>
+                  <div
+                    className={`cursor-pointer p-4 rounded-xl transition-all duration-200 border ${
+                      dragOverTarget === season.id
+                        ? "bg-blue-50 border-blue-300 shadow-lg"
+                        : "bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:shadow-md"
+                    } ${
+                      draggedItem?.type === "season" &&
+                      draggedItem?.id === season.id
+                        ? "opacity-50 scale-95"
+                        : ""
+                    }`}
+                    draggable
+                    onDragStart={(e) =>
+                      handleDragStart(e, "season", season.id, season)
+                    }
+                    onDragOver={(e) => handleDragOver(e, season.id)}
+                    onDragLeave={(e) => setDragOverTarget(null)}
+                    onDrop={(e) => handleDrop(e, "season", season.id)}
+                    onClick={() => toggleSeason(season.id)}
+                  >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Folder className="h-4 w-4 text-blue-500" />
-                        <Button
-                          variant="ghost"
-                          className="h-auto p-0 text-left font-medium"
-                          onClick={() => toggleSeason(season.id)}
-                        >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gray-200">
+                          <Folder className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <span className="font-semibold text-gray-800">
                           {season.name}
-                          {season.games.length > 0 &&
-                            (season.open ? (
-                              <ChevronDown className="h-4 w-4 ml-1" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 ml-1" />
-                            ))}
-                        </Button>
+                        </span>
+                        {season.games.length > 0 &&
+                          (season.open ? (
+                            <ChevronDown className="h-4 w-4 text-gray-500 transition-transform duration-200" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-gray-500 transition-transform duration-200" />
+                          ))}
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-medium">
                         {season.games.length} games
                       </span>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {season.open && season.games.length > 0 && (
-                  <div className="ml-6 mt-2 space-y-2">
-                    {season.games.map((game) => (
-                      <div key={game.id}>
-                        <Card
-                          className={`cursor-pointer hover:bg-gray-50 transition-colors ${
-                            dragOverTarget === game.id
-                              ? "bg-green-100 border-green-300"
-                              : ""
-                          } ${
-                            draggedItem?.type === "game" &&
-                            draggedItem?.id === game.id
-                              ? "opacity-50"
-                              : ""
-                          }`}
-                          draggable
-                          onDragStart={(e) =>
-                            handleDragStart(e, "game", game.id, game)
-                          }
-                          onDragOver={(e) => handleDragOver(e, game.id)}
-                          onDragLeave={(e) => setDragOverTarget(null)}
-                          onDrop={(e) => handleDrop(e, "game", game.id)}
-                        >
-                          <CardContent className="p-3">
+                  {season.open && season.games.length > 0 && (
+                    <div className="ml-6 mt-3 space-y-2">
+                      {season.games.map((game) => (
+                        <div key={game.id}>
+                          <div
+                            className={`cursor-pointer p-3 rounded-lg transition-all duration-200 border ${
+                              dragOverTarget === game.id
+                                ? "bg-green-50 border-green-300 shadow-lg"
+                                : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md"
+                            } ${
+                              draggedItem?.type === "game" &&
+                              draggedItem?.id === game.id
+                                ? "opacity-50 scale-95"
+                                : ""
+                            }`}
+                            draggable
+                            onDragStart={(e) =>
+                              handleDragStart(e, "game", game.id, game)
+                            }
+                            onDragOver={(e) => handleDragOver(e, game.id)}
+                            onDragLeave={(e) => setDragOverTarget(null)}
+                            onDrop={(e) => handleDrop(e, "game", game.id)}
+                            onClick={() => toggleGame(season.id, game.id)}
+                          >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Gamepad2 className="h-4 w-4 text-green-500" />
-                                <Button
-                                  variant="ghost"
-                                  className="h-auto p-0 text-left font-medium"
-                                  onClick={() => toggleGame(season.id, game.id)}
-                                >
+                              <div className="flex items-center gap-3">
+                                <div className="p-1.5 rounded-md bg-gray-200">
+                                  <Gamepad2 className="h-3.5 w-3.5 text-gray-600" />
+                                </div>
+                                <span className="font-medium text-gray-700">
                                   {game.name}
-                                  {game.videos.length > 0 &&
-                                    (game.open ? (
-                                      <ChevronDown className="h-4 w-4 ml-1" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 ml-1" />
-                                    ))}
-                                </Button>
+                                </span>
+                                {game.videos.length > 0 &&
+                                  (game.open ? (
+                                    <ChevronDown className="h-3.5 w-3.5 text-gray-500 transition-transform duration-200" />
+                                  ) : (
+                                    <ChevronRight className="h-3.5 w-3.5 text-gray-500 transition-transform duration-200" />
+                                  ))}
                               </div>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-medium">
                                 {game.videos.length} videos
                               </span>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
 
-                        {game.open && game.videos.length > 0 && (
-                          <div className="ml-6 mt-2 space-y-1">
-                            {game.videos.map((video) => (
-                              <Card
-                                key={video._id}
-                                className={`cursor-pointer hover:bg-gray-50 transition-colors ${
-                                  dragOverTarget === video._id
-                                    ? "bg-red-100 border-red-300"
-                                    : ""
-                                } ${
-                                  draggedItem?.type === "video" &&
-                                  draggedItem?.id === video._id
-                                    ? "opacity-50"
-                                    : ""
-                                }`}
-                                draggable
-                                onDragStart={(e) =>
-                                  handleDragStart(
-                                    e,
-                                    "video",
-                                    video._id || "",
-                                    video
-                                  )
-                                }
-                                onDragOver={(e) =>
-                                  handleDragOver(e, video._id || "")
-                                }
-                                onDragLeave={(e) => setDragOverTarget(null)}
-                                onDrop={(e) => handleDrop(e, "game", game.id)}
-                              >
-                                <CardContent className="p-2">
-                                  <div className="flex items-center gap-2">
+                          {game.open && game.videos.length > 0 && (
+                            <div className="ml-6 mt-2 space-y-1">
+                              {game.videos.map((video) => (
+                                <div
+                                  key={video._id}
+                                  className={`cursor-pointer p-2.5 rounded-md transition-all duration-200 border ${
+                                    dragOverTarget === video._id
+                                      ? "bg-red-50 border-red-300 shadow-md"
+                                      : "bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200 hover:shadow-sm"
+                                  } ${
+                                    draggedItem?.type === "video" &&
+                                    draggedItem?.id === video._id
+                                      ? "opacity-50 scale-95"
+                                      : ""
+                                  }`}
+                                  draggable
+                                  onDragStart={(e) =>
+                                    handleDragStart(
+                                      e,
+                                      "video",
+                                      video._id || "",
+                                      video
+                                    )
+                                  }
+                                  onDragOver={(e) =>
+                                    handleDragOver(e, video._id || "")
+                                  }
+                                  onDragLeave={(e) => setDragOverTarget(null)}
+                                  onDrop={(e) => handleDrop(e, "game", game.id)}
+                                >
+                                  <div className="flex items-center gap-3">
                                     <Checkbox
-                                      className="border-gray-300"
+                                      className="border-gray-400 data-[state=checked]:bg-gray-600 data-[state=checked]:border-gray-600"
                                       checked={selectedVideo?._id === video._id}
                                     />
-                                    <Video className="h-3 w-3 text-red-500" />
-                                    <span className="text-sm truncate">
+                                    <div className="p-1 rounded bg-gray-200">
+                                      <Video className="h-3 w-3 text-gray-600" />
+                                    </div>
+                                    <span className="text-sm text-gray-700 truncate font-medium">
                                       {video.title || video.name || "Untitled"}
                                     </span>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
