@@ -682,7 +682,13 @@ export function VideoPageMain() {
   };
 
   const isTrimming = () => {
-    return replacingVideo?.status === "uploading";
+    const result = replacingVideo?.status === "uploading" || localTrimming;
+    console.log("isTrimming check:", {
+      replacingVideoStatus: replacingVideo?.status,
+      localTrimming,
+      result,
+    });
+    return result;
   };
 
   // Toast ID for upload notification
@@ -914,6 +920,8 @@ export function VideoPageMain() {
     error?: string;
   } | null>(null);
 
+  const [localTrimming, setLocalTrimming] = useState(false);
+
   const [trimPreview, setTrimPreview] = useState<{
     start: number;
     end: number;
@@ -955,6 +963,16 @@ export function VideoPageMain() {
 
         // Disable edit mode after successful trim
         setEditMode(false);
+
+        // Reset localTrimming state
+        setLocalTrimming(false);
+
+        // Reset replacingVideo to null immediately to ensure UI is re-enabled
+        setReplacingVideo(null);
+        console.log("Reset replacingVideo to null immediately");
+
+        // Check isTrimming status right before showing success toast
+        console.log("isTrimming status before success toast:", isTrimming());
 
         toast.success("Video successfully replaced with trimmed version");
       } else {
@@ -1475,6 +1493,17 @@ export function VideoPageMain() {
                                         blob
                                       );
                                     }
+                                  }}
+                                  onTrimStateChange={(isTrimming) => {
+                                    console.log(
+                                      "onTrimStateChange called with:",
+                                      isTrimming
+                                    );
+                                    setLocalTrimming(isTrimming);
+                                    console.log(
+                                      "localTrimming state updated to:",
+                                      isTrimming
+                                    );
                                   }}
                                 />
                               </div>

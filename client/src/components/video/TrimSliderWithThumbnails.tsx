@@ -22,6 +22,7 @@ interface TrimSliderWithThumbnailsProps {
   video?: VideoDetails;
   onTrimChange?: (start: number, end: number) => void; // Add this
   onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
+  onTrimStateChange?: (isTrimming: boolean) => void; // Add this to notify parent of trimming state
 }
 
 const THUMB_COUNT = 8;
@@ -35,6 +36,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   onTrimChange, // Add this
   videoThumbnail,
   onTrimComplete,
+  onTrimStateChange,
 }) => {
   const [start, setStart] = useState(0);
   const [end, setEnd] = useState(duration);
@@ -50,6 +52,17 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     width: THUMB_WIDTH,
     height: THUMB_HEIGHT,
   });
+
+  // Notify parent component when trimming state changes
+  useEffect(() => {
+    console.log(
+      "TrimSliderWithThumbnails: isTrimming state changed to:",
+      isTrimming
+    );
+    if (onTrimStateChange) {
+      onTrimStateChange(isTrimming);
+    }
+  }, [isTrimming, onTrimStateChange]);
 
   // Initialize video element
   useEffect(() => {
