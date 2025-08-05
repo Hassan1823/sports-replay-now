@@ -223,6 +223,15 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     // Store a reference to the current video element to prevent null issues
     const currentVideo = videoRef.current;
 
+    // Store original volume and mute state at the beginning
+    let originalVolume = 1;
+    let originalMuted = false;
+
+    if (currentVideo) {
+      originalVolume = currentVideo.volume;
+      originalMuted = currentVideo.muted;
+    }
+
     try {
       // Ensure video is ready before proceeding
       if (currentVideo.readyState < 2) {
@@ -278,6 +287,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           onTrimComplete(blob, start, end);
         }
 
+        // Restore original volume and mute state
+        if (currentVideo) {
+          currentVideo.volume = originalVolume;
+          currentVideo.muted = originalMuted;
+        }
+
         // Clean up
         stream.getTracks().forEach((track) => track.stop());
         mediaRecorderRef.current = null;
@@ -291,6 +306,10 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       if (!currentVideo) {
         throw new Error("Video element was lost during trimming setup");
       }
+
+      // Mute the video during trimming to prevent audio playback
+      currentVideo.volume = 0;
+      currentVideo.muted = true;
 
       currentVideo.currentTime = start;
       await new Promise((resolve) => {
@@ -328,6 +347,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     } catch (error) {
       console.error("Error trimming video:", error);
       setIsTrimming(false);
+
+      // Restore original volume and mute state on error
+      if (currentVideo) {
+        currentVideo.volume = originalVolume;
+        currentVideo.muted = originalMuted;
+      }
 
       // Show user-friendly error message
       if (error instanceof Error) {
