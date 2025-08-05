@@ -1,4 +1,4 @@
-import { PlayCircleIcon } from "lucide-react";
+import { PlayCircleIcon, Clock } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import Loading from "../shared/loading";
@@ -40,6 +40,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   const [end, setEnd] = useState(duration);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [isTrimming, setIsTrimming] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -54,13 +55,25 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   useEffect(() => {
     if (!videoUrl) return;
 
+    setIsVideoReady(false);
     const video = document.createElement("video");
     video.crossOrigin = "anonymous";
     video.src = videoUrl;
     videoRef.current = video;
 
+    // Track when video is ready
+    const handleLoadedData = () => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        setIsVideoReady(true);
+      }
+    };
+
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("error", () => setIsVideoReady(false));
+
     return () => {
       if (videoRef.current) {
+        videoRef.current.removeEventListener("loadeddata", handleLoadedData);
         videoRef.current.src = "";
         videoRef.current = null;
       }
@@ -207,9 +220,40 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     setIsTrimming(true);
     recordedChunksRef.current = [];
 
+    // Store a reference to the current video element to prevent null issues
+    const currentVideo = videoRef.current;
+
     try {
+      // Ensure video is ready before proceeding
+      if (currentVideo.readyState < 2) {
+        // HAVE_CURRENT_DATA
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Video loading timeout"));
+          }, 10000); // 10 second timeout
+
+          currentVideo.onloadeddata = () => {
+            clearTimeout(timeout);
+            resolve(true);
+          };
+
+          currentVideo.onerror = () => {
+            clearTimeout(timeout);
+            reject(new Error("Video failed to load"));
+          };
+        });
+      }
+
       // Set up media recorder
       const stream = await captureVideoStream();
+
+      // Check if stream has tracks before creating MediaRecorder
+      if (stream.getTracks().length === 0) {
+        throw new Error(
+          "No video tracks available. Please ensure the video is fully loaded."
+        );
+      }
+
       mediaRecorderRef.current = new MediaRecorder(stream);
 
       mediaRecorderRef.current.ondataavailable = (e) => {
@@ -244,18 +288,36 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       mediaRecorderRef.current.start();
 
       // Seek to start position
-      videoRef.current.currentTime = start;
+      if (!currentVideo) {
+        throw new Error("Video element was lost during trimming setup");
+      }
+
+      currentVideo.currentTime = start;
       await new Promise((resolve) => {
-        videoRef.current!.onseeked = resolve;
+        if (!currentVideo) {
+          resolve(true);
+          return;
+        }
+        currentVideo.onseeked = resolve;
       });
 
       // Play the video to record the selected segment
-      videoRef.current.play();
+      if (!currentVideo) {
+        throw new Error("Video element was lost before playback");
+      }
+
+      currentVideo.play();
 
       // Stop recording when we reach the end time
       const checkTime = () => {
-        if (videoRef.current!.currentTime >= end) {
-          videoRef.current!.pause();
+        if (!currentVideo) {
+          // Video element is null, stop recording and cleanup
+          mediaRecorderRef.current?.stop();
+          return;
+        }
+
+        if (currentVideo.currentTime >= end) {
+          currentVideo.pause();
           mediaRecorderRef.current?.stop();
         } else {
           requestAnimationFrame(checkTime);
@@ -266,6 +328,17 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     } catch (error) {
       console.error("Error trimming video:", error);
       setIsTrimming(false);
+
+      // Show user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes("No video tracks available")) {
+          alert("Please wait for the video to fully load before trimming.");
+        } else if (error.message.includes("Video loading timeout")) {
+          alert("Video is taking too long to load. Please try again.");
+        } else {
+          alert(`Trimming failed: ${error.message}`);
+        }
+      }
     }
   };
 
@@ -274,14 +347,31 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       throw new Error("Video element not initialized");
     }
 
+    // Check if video has valid dimensions
+    if (
+      videoRef.current.videoWidth === 0 ||
+      videoRef.current.videoHeight === 0
+    ) {
+      throw new Error(
+        "Video dimensions are not available. Please wait for the video to load."
+      );
+    }
+
     // For browsers that support captureStream
     if ("captureStream" in videoRef.current) {
       // Extend the type to include captureStream
-      return (
+      const stream = (
         videoRef.current as HTMLVideoElement & {
           captureStream?: () => MediaStream;
         }
       ).captureStream!();
+
+      // Verify the stream has tracks
+      if (stream.getTracks().length === 0) {
+        throw new Error("No video tracks available in capture stream.");
+      }
+
+      return stream;
     }
 
     // Fallback for browsers that don't support captureStream
@@ -295,6 +385,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     }
 
     const stream = canvas.captureStream();
+
+    // Verify the canvas stream has tracks
+    if (stream.getTracks().length === 0) {
+      throw new Error("No video tracks available in canvas stream.");
+    }
+
     const drawFrame = () => {
       if (videoRef.current && ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
@@ -316,21 +412,21 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
         <Button
           size="default"
           variant="secondary"
-          disabled={end <= start || isTrimming}
-          className="z-50 bg-[#858585] rounded-none"
+          disabled={end <= start || isTrimming || !isVideoReady}
+          className="z-50 bg-[#858585] rounded-none disabled:cursor-not-allowed"
           onClick={handleTrim}
         >
           {isTrimming ? (
             <span>
               <Loading size={20} white />
             </span>
+          ) : !isVideoReady ? (
+            <>
+              <Clock size={40} />
+            </>
           ) : (
             <>
               <PlayCircleIcon size={40} fill="black" color="#858585" />
-              {/* Optionally show trim times */}
-              {/* <span className="ml-2">
-                {Math.round(start)}s - {Math.round(end)}s
-              </span> */}
             </>
           )}
         </Button>

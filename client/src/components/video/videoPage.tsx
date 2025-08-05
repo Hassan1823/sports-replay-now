@@ -540,7 +540,11 @@ export function VideoPageMain() {
 
   // FETCHING VIDEOS
   // Modified handleFetchGamesVideos - no upload restrictions
-  const handleFetchGamesVideos = async (seasonId: string, gameId: string) => {
+  const handleFetchGamesVideos = async (
+    seasonId: string,
+    gameId: string,
+    selectVideoId?: string
+  ) => {
     // Clear videos first to prevent showing old videos while loading
     setLibraryVideos([]);
     setSelectedVideo(null);
@@ -576,8 +580,17 @@ export function VideoPageMain() {
           })
         );
 
-        // Select the first video if available
-        if (videos.length > 0) {
+        // Select the specified video if provided, otherwise select the first video
+        if (selectVideoId) {
+          const targetVideo = videos.find(
+            (video) => video._id === selectVideoId
+          );
+          if (targetVideo) {
+            setSelectedVideo(targetVideo);
+          } else if (videos.length > 0) {
+            setSelectedVideo(videos[0]);
+          }
+        } else if (videos.length > 0) {
           setSelectedVideo(videos[0]);
         }
       }
@@ -666,6 +679,10 @@ export function VideoPageMain() {
     return Object.values(activeUploads).some(
       (gameUploads) => gameUploads.files.length > 0
     );
+  };
+
+  const isTrimming = () => {
+    return replacingVideo?.status === "uploading";
   };
 
   // Toast ID for upload notification
@@ -922,15 +939,22 @@ export function VideoPageMain() {
       const response = await updateVideoFile(videoId, file);
 
       if (response.success) {
-        // Refresh the video list
+        // Refresh the video list and select the same video that was trimmed
         if (selectedSeasonId && selectedGameId) {
-          await handleFetchGamesVideos(selectedSeasonId, selectedGameId);
+          await handleFetchGamesVideos(
+            selectedSeasonId,
+            selectedGameId,
+            videoId
+          );
         }
 
         setReplacingVideo({
           videoId,
           status: "success",
         });
+
+        // Disable edit mode after successful trim
+        setEditMode(false);
 
         toast.success("Video successfully replaced with trimmed version");
       } else {
@@ -967,7 +991,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={addSeason}
-              disabled={loading || hasActiveUploads()}
+              disabled={loading || hasActiveUploads() || isTrimming()}
             >
               <PlusIcon /> SEASON
             </Button>
@@ -979,7 +1003,12 @@ export function VideoPageMain() {
                 // After adding a game, do NOT change selectedGameId or selectedVideo.
                 // This keeps the user in the currently selected game.
               }}
-              disabled={!selectedSeasonId || loading || hasActiveUploads()}
+              disabled={
+                !selectedSeasonId ||
+                loading ||
+                hasActiveUploads() ||
+                isTrimming()
+              }
             >
               <PlusIcon /> GAME
             </Button>
@@ -989,7 +1018,11 @@ export function VideoPageMain() {
                 !selectedGameId || loading || editMode ? "outline" : "default"
               }
               disabled={
-                !selectedGameId || loading || editMode || hasActiveUploads()
+                !selectedGameId ||
+                loading ||
+                editMode ||
+                hasActiveUploads() ||
+                isTrimming()
               }
               onClick={() => fileInputRef.current?.click()}
               className="disabled:opacity-50 text-xs disabled:cursor-not-allowed"
@@ -1042,7 +1075,9 @@ export function VideoPageMain() {
                               toggleSeason(season.id);
                               setSelectedSeasonId(season.id);
                             }}
-                            disabled={loading || hasActiveUploads()}
+                            disabled={
+                              loading || hasActiveUploads() || isTrimming()
+                            }
                           >
                             {season.open ? (
                               <ChevronDown className="h-4 w-4" />
@@ -1066,21 +1101,25 @@ export function VideoPageMain() {
                                 e.key === "Enter" && saveRenaming()
                               }
                               className="h-8"
-                              disabled={loading || hasActiveUploads()}
+                              disabled={
+                                loading || hasActiveUploads() || isTrimming()
+                              }
                             />
                           ) : (
                             <CardTitle
                               className={`text-sm ${
-                                hasActiveUploads()
+                                hasActiveUploads() || isTrimming()
                                   ? "cursor-not-allowed opacity-50"
                                   : "cursor-pointer"
                               }`}
                               onDoubleClick={() =>
                                 !hasActiveUploads() &&
+                                !isTrimming() &&
                                 startRenaming("season", season.id, season.name)
                               }
                               onClick={() =>
                                 !hasActiveUploads() &&
+                                !isTrimming() &&
                                 setSelectedSeasonId(season.id)
                               }
                             >
@@ -1098,7 +1137,7 @@ export function VideoPageMain() {
                                 `sharedSeason?id=${season.id}` as string
                               )
                             }
-                            disabled={hasActiveUploads()}
+                            disabled={hasActiveUploads() || isTrimming()}
                           >
                             <Share2 className="w-8 h-8" />
                           </Button>
@@ -1109,7 +1148,9 @@ export function VideoPageMain() {
                                 size="icon"
                                 className="h-6 w-6 bg-transparent hover:bg-transparent"
                                 onClick={() => setShowConfirmDeleteModal(true)}
-                                disabled={loading || hasActiveUploads()}
+                                disabled={
+                                  loading || hasActiveUploads() || isTrimming()
+                                }
                               >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                               </Button>
@@ -1139,7 +1180,9 @@ export function VideoPageMain() {
                                     </Button>
                                     <Button
                                       disabled={
-                                        deleteLoading || hasActiveUploads()
+                                        deleteLoading ||
+                                        hasActiveUploads() ||
+                                        isTrimming()
                                       }
                                       variant="destructive"
                                       onClick={() => {
@@ -1187,7 +1230,9 @@ export function VideoPageMain() {
                                     handleFetchGamesVideos(season.id, game.id);
                                   }}
                                   disabled={
-                                    fetchingVideos || hasActiveUploads()
+                                    fetchingVideos ||
+                                    hasActiveUploads() ||
+                                    isTrimming()
                                   }
                                 >
                                   {fetchingVideos &&
@@ -1215,21 +1260,27 @@ export function VideoPageMain() {
                                       e.key === "Enter" && saveRenaming()
                                     }
                                     className="h-8"
-                                    disabled={loading || hasActiveUploads()}
+                                    disabled={
+                                      loading ||
+                                      hasActiveUploads() ||
+                                      isTrimming()
+                                    }
                                   />
                                 ) : (
                                   <span
                                     className={`text-sm ${
-                                      hasActiveUploads()
+                                      hasActiveUploads() || isTrimming()
                                         ? "cursor-not-allowed opacity-50"
                                         : "cursor-pointer"
                                     }`}
                                     onDoubleClick={() =>
                                       !hasActiveUploads() &&
+                                      !isTrimming() &&
                                       startRenaming("game", game.id, game.name)
                                     }
                                     onClick={() =>
                                       !hasActiveUploads() &&
+                                      !isTrimming() &&
                                       handleFetchGamesVideos(season.id, game.id)
                                     }
                                     // onClick={() => setSelectedGameId(game.id)}
@@ -1246,7 +1297,11 @@ export function VideoPageMain() {
                                       <Button
                                         size={"sm"}
                                         variant={"outline"}
-                                        disabled={loading || hasActiveUploads()}
+                                        disabled={
+                                          loading ||
+                                          hasActiveUploads() ||
+                                          isTrimming()
+                                        }
                                         onClick={() =>
                                           fileInputRef.current?.click()
                                         }
@@ -1274,7 +1329,7 @@ export function VideoPageMain() {
                                       `sharedGame?id=${game.id}` as string
                                     )
                                   }
-                                  disabled={hasActiveUploads()}
+                                  disabled={hasActiveUploads() || isTrimming()}
                                 >
                                   <Share2 className="w-8 h-8" />
                                 </Button>
@@ -1287,7 +1342,11 @@ export function VideoPageMain() {
                                       onClick={() =>
                                         deleteGameFromSeason(season.id, game.id)
                                       }
-                                      disabled={loading || hasActiveUploads()}
+                                      disabled={
+                                        loading ||
+                                        hasActiveUploads() ||
+                                        isTrimming()
+                                      }
                                     >
                                       <Trash2 className="h-4 w-4 text-red-500" />
                                     </Button>
@@ -1319,7 +1378,9 @@ export function VideoPageMain() {
                                     </Button>
                                     <Button
                                       disabled={
-                                        deleteLoading || hasActiveUploads()
+                                        deleteLoading ||
+                                        hasActiveUploads() ||
+                                        isTrimming()
                                       }
                                       variant="destructive"
                                       onClick={confirmDeleteGame}
@@ -1497,7 +1558,9 @@ export function VideoPageMain() {
                                 }
                               }}
                               disabled={
-                                fetchingVideoDetails || hasActiveUploads()
+                                fetchingVideoDetails ||
+                                hasActiveUploads() ||
+                                isTrimming()
                               }
                             >
                               {fetchingVideoDetails ? (
@@ -1558,6 +1621,7 @@ export function VideoPageMain() {
                               }
                               className="flex flex-col items-center h-auto p-1"
                               onClick={() => selectVideo(video)}
+                              disabled={isTrimming()}
                             >
                               <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-200">
                                 {video.videoThumbnail ? (
@@ -1574,7 +1638,9 @@ export function VideoPageMain() {
                                 {video.title || "Untitled"}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {video.videoDuration || "00:00"}
+                                {video.videoDuration
+                                  ? video.videoDuration
+                                  : "00:00"}
                               </span>
                             </Button>
                           );
@@ -1585,6 +1651,7 @@ export function VideoPageMain() {
                         <Button
                           variant="ghost"
                           onClick={() => setShowAllVideos(!showAllVideos)}
+                          disabled={isTrimming()}
                         >
                           {showAllVideos
                             ? "Show Less"
@@ -1610,7 +1677,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={toggleEditMode}
-              disabled={loading || hasActiveUploads()}
+              disabled={loading || hasActiveUploads() || isTrimming()}
             >
               {editMode ? (
                 <Undo className="mr-2 h-4 w-4" />
@@ -1626,7 +1693,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={() => setShowMenu(!showMenu)}
-              disabled={hasActiveUploads()}
+              disabled={hasActiveUploads() || isTrimming()}
             >
               <MenuIcon />
             </Button>
@@ -1662,8 +1729,12 @@ export function VideoPageMain() {
                       {libraryVideos?.map((video) => (
                         <li
                           key={video._id}
-                          className="px-0 text-[0.85rem] hover:bg-[#858585] rounded cursor-pointer flex justify-between items-center gap-2"
-                          onClick={() => selectVideo(video)}
+                          className={`px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 ${
+                            isTrimming()
+                              ? "cursor-not-allowed opacity-50"
+                              : "cursor-pointer"
+                          }`}
+                          onClick={() => !isTrimming() && selectVideo(video)}
                         >
                           <div className="flex justify-start items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
                             <Checkbox
@@ -1682,6 +1753,7 @@ export function VideoPageMain() {
                                 `sharedVideo?id=${video._id}` as string
                               )
                             }
+                            disabled={isTrimming()}
                           >
                             <Share2 className="w-8 h-8" />
                           </Button>
