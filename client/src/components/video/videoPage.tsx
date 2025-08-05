@@ -47,6 +47,7 @@ import Loading from "../shared/loading";
 import { Checkbox } from "../ui/checkbox";
 import ShareVideoModal from "./ShareVideoModal";
 import TrimSliderWithThumbnails from "./TrimSliderWithThumbnails";
+import { LibrarySidebar } from "./LibrarySidebar";
 
 type Video = {
   description: string;
@@ -88,6 +89,7 @@ export function VideoPageMain() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editMode, setEditMode] = useState(false);
   const [seasons, setSeasons] = useState<Season[]>([]);
+  const [librarySeasons, setLibrarySeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   type VideoDetails = {
@@ -126,6 +128,7 @@ export function VideoPageMain() {
   const [fetchingVideos, setFetchingVideos] = useState(false);
   const [fetchingVideoDetails, setFetchingVideoDetails] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [showAllVideos, setShowAllVideos] = useState(false);
   const [videoThumbnail, setVideoThumbnail] = useState("");
 
@@ -301,7 +304,9 @@ export function VideoPageMain() {
             };
           })
         );
+        console.log("Setting seasons data:", seasonsWithGames);
         setSeasons(seasonsWithGames);
+        setLibrarySeasons(seasonsWithGames);
       }
     } catch (err) {
       console.error("Error fetching seasons:", err);
@@ -950,7 +955,163 @@ export function VideoPageMain() {
     active: boolean;
   }>({ start: 0, end: 0, active: false });
 
+  const duration = trimmedVideo.end - trimmedVideo.start; // 11 - 5 = 6 seconds
+  console.log("🚀 ~ VideoPageMain ~ duration:", duration);
+
   // Add this function to handle the video replacement
+  const handleDragDrop = (
+    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
+    targetType: "season" | "game",
+    targetId: string
+  ) => {
+    // Handle local drag and drop operations
+    if (draggedItem.type === "video" && targetType === "game") {
+      // Move video to different game
+      const videoId = draggedItem.id;
+      const targetGameId = targetId;
+
+      // Find the video and remove it from its current location
+      setSeasons((prevSeasons) => {
+        const newSeasons = [...prevSeasons];
+
+        // Remove video from current game
+        for (const season of newSeasons) {
+          for (const game of season.games) {
+            const videoIndex = game.videos.findIndex((v) => v._id === videoId);
+            if (videoIndex !== -1) {
+              const video = game.videos[videoIndex];
+              game.videos.splice(videoIndex, 1);
+
+              // Add video to target game
+              for (const targetSeason of newSeasons) {
+                const targetGame = targetSeason.games.find(
+                  (g) => g.id === targetGameId
+                );
+                if (targetGame) {
+                  targetGame.videos.push(video);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+
+        return newSeasons;
+      });
+    } else if (draggedItem.type === "game" && targetType === "season") {
+      // Move game to different season
+      const gameId = draggedItem.id;
+      const targetSeasonId = targetId;
+
+      setSeasons((prevSeasons) => {
+        const newSeasons = [...prevSeasons];
+        let gameToMove: Game | null = null;
+
+        // Find and remove game from current season
+        for (const season of newSeasons) {
+          const gameIndex = season.games.findIndex((g) => g.id === gameId);
+          if (gameIndex !== -1) {
+            gameToMove = season.games[gameIndex];
+            season.games.splice(gameIndex, 1);
+            break;
+          }
+        }
+
+        // Add game to target season
+        if (gameToMove) {
+          const targetSeason = newSeasons.find((s) => s.id === targetSeasonId);
+          if (targetSeason) {
+            targetSeason.games.push(gameToMove);
+          }
+        }
+
+        return newSeasons;
+      });
+    }
+
+    console.log(
+      `Dropped ${draggedItem.type} ${draggedItem.id} into ${targetType} ${targetId}`
+    );
+  };
+
+  // Separate drag drop handler for library sidebar
+  const handleLibraryDragDrop = (
+    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
+    targetType: "season" | "game",
+    targetId: string
+  ) => {
+    // Handle local drag and drop operations for library only
+    if (draggedItem.type === "video" && targetType === "game") {
+      // Move video to different game
+      const videoId = draggedItem.id;
+      const targetGameId = targetId;
+
+      // Find the video and remove it from its current location
+      setLibrarySeasons((prevSeasons) => {
+        const newSeasons = [...prevSeasons];
+
+        // Remove video from current game
+        for (const season of newSeasons) {
+          for (const game of season.games) {
+            const videoIndex = game.videos.findIndex((v) => v._id === videoId);
+            if (videoIndex !== -1) {
+              const video = game.videos[videoIndex];
+              game.videos.splice(videoIndex, 1);
+
+              // Add video to target game
+              for (const targetSeason of newSeasons) {
+                const targetGame = targetSeason.games.find(
+                  (g) => g.id === targetGameId
+                );
+                if (targetGame) {
+                  targetGame.videos.push(video);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+
+        return newSeasons;
+      });
+    } else if (draggedItem.type === "game" && targetType === "season") {
+      // Move game to different season
+      const gameId = draggedItem.id;
+      const targetSeasonId = targetId;
+
+      setLibrarySeasons((prevSeasons) => {
+        const newSeasons = [...prevSeasons];
+        let gameToMove: Game | null = null;
+
+        // Find and remove game from current season
+        for (const season of newSeasons) {
+          const gameIndex = season.games.findIndex((g) => g.id === gameId);
+          if (gameIndex !== -1) {
+            gameToMove = season.games[gameIndex];
+            season.games.splice(gameIndex, 1);
+            break;
+          }
+        }
+
+        // Add game to target season
+        if (gameToMove) {
+          const targetSeason = newSeasons.find((s) => s.id === targetSeasonId);
+          if (targetSeason) {
+            targetSeason.games.push(gameToMove);
+          }
+        }
+
+        return newSeasons;
+      });
+    }
+
+    console.log(
+      `Library: Dropped ${draggedItem.type} ${draggedItem.id} into ${targetType} ${targetId}`
+    );
+  };
+
   const handleReplaceVideo = async (videoId: string, blob: Blob) => {
     if (!videoId || !blob) return;
 
@@ -966,7 +1127,7 @@ export function VideoPageMain() {
       });
 
       // Call the updateVideoFile API
-      const response = await updateVideoFile(videoId, file);
+      const response = await updateVideoFile(videoId, duration, file);
 
       if (response.success) {
         // Refresh the video list and select the same video that was trimmed
@@ -1737,7 +1898,12 @@ export function VideoPageMain() {
               )}
               EDIT
             </Button>
-            <Button size={"sm"} className="text-xs">
+            <Button
+              size={"sm"}
+              className="text-xs"
+              onClick={() => setShowLibrary(!showLibrary)}
+              disabled={hasActiveUploads() || isTrimming()}
+            >
               LIBRARY
             </Button>
             <Button
@@ -1950,7 +2116,54 @@ export function VideoPageMain() {
         </div>
       )}
 
-      {/* show share video modal here  */}
+      {/* Library Sidebar */}
+      {(() => {
+        if (showLibrary) {
+          console.log(
+            "Rendering LibrarySidebar, showLibrary:",
+            showLibrary,
+            "librarySeasons:",
+            librarySeasons
+          );
+        }
+        return null;
+      })()}
+      {showLibrary && (
+        <LibrarySidebar
+          seasons={librarySeasons}
+          onClose={() => setShowLibrary(false)}
+          onSelectVideo={selectVideo}
+          selectedVideo={selectedVideo}
+          onToggleSeason={(seasonId) => {
+            // Library-specific toggle that only affects library state
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) =>
+                season.id === seasonId
+                  ? { ...season, open: !season.open }
+                  : season
+              )
+            );
+          }}
+          onToggleGame={(seasonId, gameId) => {
+            // Library-specific toggle that only affects library state
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((s) =>
+                s.id === seasonId
+                  ? {
+                      ...s,
+                      games: s.games.map((g) =>
+                        g.id === gameId ? { ...g, open: !g.open } : g
+                      ),
+                    }
+                  : s
+              )
+            );
+          }}
+          onDragDrop={handleLibraryDragDrop}
+        />
+      )}
+
+      {/* show share video modal here */}
       {shareModal && (
         <ShareVideoModal
           setShareModal={setShareModal}

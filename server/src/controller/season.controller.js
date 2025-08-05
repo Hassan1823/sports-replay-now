@@ -292,6 +292,8 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
 export const updateVideoFile = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const videoFile = req.file;
+  const { duration } = req.body;
+  console.log("🚀 ~ duration:", duration || "no duration");
 
   if (!videoId || !videoFile) {
     return res.status(400).json({
@@ -458,7 +460,9 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
         videoShareLink: peertubeVideoDetails.url || "",
         videoChannel: peertubeVideoDetails.channel.url || "",
         filePath: uploadResponse.data.video.url,
-        duration: uploadResponse.data.video.duration,
+        duration: duration
+          ? parseFloat(duration)
+          : uploadResponse.data.video.duration,
         videoThumbnail: thumbnailPath || previewPath || "",
         videoDuration: videoDuration || existingVideo.videoDuration, // Use new duration or keep existing
         // Keep the original muteVideo status
