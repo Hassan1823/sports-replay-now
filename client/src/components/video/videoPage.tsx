@@ -647,6 +647,16 @@ export function VideoPageMain() {
           files: filtered,
           muteMap,
         });
+      } else {
+        // Reset file input if no valid files were selected
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    } else {
+      // Reset file input if no files were selected
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     }
   };
@@ -676,9 +686,11 @@ export function VideoPageMain() {
 
   // Helper function to check if there are any active uploads
   const hasActiveUploads = () => {
-    return Object.values(activeUploads).some(
-      (gameUploads) => gameUploads.files.length > 0
+    const hasUploads = Object.values(activeUploads).some((gameUploads) =>
+      gameUploads.files.some((file) => file.status === "uploading")
     );
+    console.log("hasActiveUploads check:", { activeUploads, hasUploads });
+    return hasUploads;
   };
 
   const isTrimming = () => {
@@ -697,6 +709,12 @@ export function VideoPageMain() {
   // 888888888888888888888888****
   const handleUploadConfirmation = async (confirmed: boolean) => {
     setUploadConfirmation({ open: false, files: [], muteMap: {} });
+
+    // Reset file input value to allow selecting the same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
       return;
 
@@ -782,39 +800,43 @@ export function VideoPageMain() {
           }
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
+          console.error(`Failed to upload ${file.name}:`, errorMessage);
+
+          // Remove the failed upload from activeUploads immediately
           setActiveUploads((prev) => ({
             ...prev,
             [selectedGameId]: {
               files:
-                prev[selectedGameId]?.files.map((f) =>
-                  f.name === file.name
-                    ? {
-                        ...f,
-                        status: "error" as const,
-                        error: errorMessage,
-                      }
-                    : f
+                prev[selectedGameId]?.files.filter(
+                  (f) => f.name !== file.name
                 ) || [],
             },
           }));
+
+          // Show error toast for the failed upload
+          toast.error(`Failed to upload "${file.name}": ${errorMessage}`);
         }
       }
     } finally {
-      // Clean up completed uploads after a delay
+      // Clean up completed uploads immediately
+      setActiveUploads((prev) => {
+        const newState = { ...prev };
+        if (newState[selectedGameId]?.files.length === 0) {
+          delete newState[selectedGameId];
+        }
+        return newState;
+      });
+
+      // Clear the upload tracking when all uploads are done
       setTimeout(() => {
         setActiveUploads((prev) => {
-          const newState = { ...prev };
-          if (newState[selectedGameId]?.files.length === 0) {
-            delete newState[selectedGameId];
+          if (Object.keys(prev).length === 0) {
+            setUploadingGameId(null);
+            uploadingGameIdRef.current = null;
           }
-          return newState;
+          return prev;
         });
-        // Clear the upload tracking when all uploads are done
-        if (Object.keys(activeUploads).length === 0) {
-          setUploadingGameId(null);
-          uploadingGameIdRef.current = null;
-        }
-      }, 3000);
+      }, 1000);
     }
   };
 
