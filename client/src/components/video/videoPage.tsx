@@ -138,6 +138,8 @@ export function VideoPageMain() {
   const videoRef = useRef<HTMLVideoElement>(null);
   // Hls.js instance ref
   const hlsInstance = useRef<Hls | null>(null);
+  // Ref to track the original upload target for conditional refresh
+  const uploadingGameIdRef = useRef<string | null>(null);
   const { refreshToken, user, logout } = useAuth();
 
   // GET VIDEO DETAILS
@@ -659,12 +661,24 @@ export function VideoPageMain() {
   // state to tract uploading gameId
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
 
+  // Helper function to check if there are any active uploads
+  const hasActiveUploads = () => {
+    return Object.values(activeUploads).some(
+      (gameUploads) => gameUploads.files.length > 0
+    );
+  };
+
+  // Toast ID for upload notification
+  const uploadToastId = "upload-notification";
+
   // 888888888888888888888888****
   const handleUploadConfirmation = async (confirmed: boolean) => {
     setUploadConfirmation({ open: false, files: [], muteMap: {} });
     if (!confirmed || !uploadConfirmation.files.length || !selectedGameId)
       return;
 
+    // Store the original upload target in ref for stable comparison
+    uploadingGameIdRef.current = selectedGameId;
     setUploadingGameId(selectedGameId);
 
     // Initialize upload tracking for this game
@@ -706,8 +720,11 @@ export function VideoPageMain() {
               },
             }));
 
-            // Silently refresh the game's videos in the background
-            if (selectedGameId === uploadingGameId) {
+            // Run condition for each uploaded video - compare with original upload target
+            if (selectedGameId === uploadingGameIdRef.current) {
+              // toast.success(`Video "${file.name}" uploaded successfully!`);
+
+              // Silently refresh the game's videos in the background
               const videosRes = await getVideosForGame(selectedGameId);
               if (videosRes.success) {
                 const updatedVideos = Array.isArray(videosRes.data)
@@ -734,12 +751,10 @@ export function VideoPageMain() {
                     return season;
                   })
                 );
-
-                // Only update libraryVideos if we're currently viewing this game
-                // if (uploadingGameId && uploadingGameId === selectedGameId) {
                 setLibraryVideos(updatedVideos);
-                // }
               }
+            } else {
+              toast.success(`Video "${file.name}" uploaded successfully!`);
             }
           }
         } catch (err) {
@@ -762,7 +777,6 @@ export function VideoPageMain() {
         }
       }
     } finally {
-      // setUploadingGameId(null);
       // Clean up completed uploads after a delay
       setTimeout(() => {
         setActiveUploads((prev) => {
@@ -772,6 +786,11 @@ export function VideoPageMain() {
           }
           return newState;
         });
+        // Clear the upload tracking when all uploads are done
+        if (Object.keys(activeUploads).length === 0) {
+          setUploadingGameId(null);
+          uploadingGameIdRef.current = null;
+        }
       }, 3000);
     }
   };
@@ -827,6 +846,39 @@ export function VideoPageMain() {
       }
     };
   }, [selectedVideoDetails]);
+
+  // Manage upload notification toast
+  useEffect(() => {
+    const hasUploads = hasActiveUploads();
+
+    if (hasUploads) {
+      // Show persistent toast for uploads
+      toast.loading(
+        <div className="flex items-center justify-between w-full min-w-[300px]">
+          <div className="flex items-center gap-2 flex-1">
+            {/* <Loading size={16} /> */}
+            <span className="w-full text-center flex justify-center items-center">
+              Video upload in progress. Please wait before switching folders or
+              seasons.
+            </span>
+          </div>
+          <button
+            onClick={() => toast.dismiss(uploadToastId)}
+            className="ml-4 text-inherit hover:text-inherit transition-colors cursor-pointer flex-shrink-0"
+          >
+            ✕
+          </button>
+        </div>,
+        {
+          id: uploadToastId,
+          duration: Infinity, // Keep until dismissed or uploads complete
+        }
+      );
+    } else {
+      // Dismiss toast when no uploads are active
+      toast.dismiss(uploadToastId);
+    }
+  }, [activeUploads]);
 
   // * show share modal
   const [shareModal, setShareModal] = useState(false);
@@ -915,7 +967,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={addSeason}
-              disabled={loading}
+              disabled={loading || hasActiveUploads()}
             >
               <PlusIcon /> SEASON
             </Button>
@@ -927,7 +979,7 @@ export function VideoPageMain() {
                 // After adding a game, do NOT change selectedGameId or selectedVideo.
                 // This keeps the user in the currently selected game.
               }}
-              disabled={!selectedSeasonId || loading}
+              disabled={!selectedSeasonId || loading || hasActiveUploads()}
             >
               <PlusIcon /> GAME
             </Button>
@@ -936,7 +988,9 @@ export function VideoPageMain() {
               variant={
                 !selectedGameId || loading || editMode ? "outline" : "default"
               }
-              disabled={!selectedGameId || loading || editMode}
+              disabled={
+                !selectedGameId || loading || editMode || hasActiveUploads()
+              }
               onClick={() => fileInputRef.current?.click()}
               className="disabled:opacity-50 text-xs disabled:cursor-not-allowed"
             >
@@ -988,7 +1042,7 @@ export function VideoPageMain() {
                               toggleSeason(season.id);
                               setSelectedSeasonId(season.id);
                             }}
-                            disabled={loading}
+                            disabled={loading || hasActiveUploads()}
                           >
                             {season.open ? (
                               <ChevronDown className="h-4 w-4" />
@@ -1012,15 +1066,23 @@ export function VideoPageMain() {
                                 e.key === "Enter" && saveRenaming()
                               }
                               className="h-8"
-                              disabled={loading}
+                              disabled={loading || hasActiveUploads()}
                             />
                           ) : (
                             <CardTitle
-                              className="text-sm cursor-pointer"
+                              className={`text-sm ${
+                                hasActiveUploads()
+                                  ? "cursor-not-allowed opacity-50"
+                                  : "cursor-pointer"
+                              }`}
                               onDoubleClick={() =>
+                                !hasActiveUploads() &&
                                 startRenaming("season", season.id, season.name)
                               }
-                              onClick={() => setSelectedSeasonId(season.id)}
+                              onClick={() =>
+                                !hasActiveUploads() &&
+                                setSelectedSeasonId(season.id)
+                              }
                             >
                               {season.name}
                             </CardTitle>
@@ -1036,6 +1098,7 @@ export function VideoPageMain() {
                                 `sharedSeason?id=${season.id}` as string
                               )
                             }
+                            disabled={hasActiveUploads()}
                           >
                             <Share2 className="w-8 h-8" />
                           </Button>
@@ -1046,7 +1109,7 @@ export function VideoPageMain() {
                                 size="icon"
                                 className="h-6 w-6 bg-transparent hover:bg-transparent"
                                 onClick={() => setShowConfirmDeleteModal(true)}
-                                disabled={loading}
+                                disabled={loading || hasActiveUploads()}
                               >
                                 <Trash2 className="h-4 w-4 text-red-500" />
                               </Button>
@@ -1075,7 +1138,9 @@ export function VideoPageMain() {
                                       Cancel
                                     </Button>
                                     <Button
-                                      disabled={deleteLoading}
+                                      disabled={
+                                        deleteLoading || hasActiveUploads()
+                                      }
                                       variant="destructive"
                                       onClick={() => {
                                         deleteSeason(season.id);
@@ -1121,7 +1186,9 @@ export function VideoPageMain() {
                                     // setSelectedVideo(null);
                                     handleFetchGamesVideos(season.id, game.id);
                                   }}
-                                  disabled={fetchingVideos}
+                                  disabled={
+                                    fetchingVideos || hasActiveUploads()
+                                  }
                                 >
                                   {fetchingVideos &&
                                   selectedGameId === game.id ? (
@@ -1148,15 +1215,21 @@ export function VideoPageMain() {
                                       e.key === "Enter" && saveRenaming()
                                     }
                                     className="h-8"
-                                    disabled={loading}
+                                    disabled={loading || hasActiveUploads()}
                                   />
                                 ) : (
                                   <span
-                                    className="text-sm cursor-pointer"
+                                    className={`text-sm ${
+                                      hasActiveUploads()
+                                        ? "cursor-not-allowed opacity-50"
+                                        : "cursor-pointer"
+                                    }`}
                                     onDoubleClick={() =>
+                                      !hasActiveUploads() &&
                                       startRenaming("game", game.id, game.name)
                                     }
                                     onClick={() =>
+                                      !hasActiveUploads() &&
                                       handleFetchGamesVideos(season.id, game.id)
                                     }
                                     // onClick={() => setSelectedGameId(game.id)}
@@ -1173,7 +1246,7 @@ export function VideoPageMain() {
                                       <Button
                                         size={"sm"}
                                         variant={"outline"}
-                                        disabled={loading}
+                                        disabled={loading || hasActiveUploads()}
                                         onClick={() =>
                                           fileInputRef.current?.click()
                                         }
@@ -1201,6 +1274,7 @@ export function VideoPageMain() {
                                       `sharedGame?id=${game.id}` as string
                                     )
                                   }
+                                  disabled={hasActiveUploads()}
                                 >
                                   <Share2 className="w-8 h-8" />
                                 </Button>
@@ -1213,7 +1287,7 @@ export function VideoPageMain() {
                                       onClick={() =>
                                         deleteGameFromSeason(season.id, game.id)
                                       }
-                                      disabled={loading}
+                                      disabled={loading || hasActiveUploads()}
                                     >
                                       <Trash2 className="h-4 w-4 text-red-500" />
                                     </Button>
@@ -1244,7 +1318,9 @@ export function VideoPageMain() {
                                       Cancel
                                     </Button>
                                     <Button
-                                      disabled={deleteLoading}
+                                      disabled={
+                                        deleteLoading || hasActiveUploads()
+                                      }
                                       variant="destructive"
                                       onClick={confirmDeleteGame}
                                     >
@@ -1432,7 +1508,9 @@ export function VideoPageMain() {
                                   fetchVideoDetails(selectedVideo._id);
                                 }
                               }}
-                              disabled={fetchingVideoDetails}
+                              disabled={
+                                fetchingVideoDetails || hasActiveUploads()
+                              }
                             >
                               {fetchingVideoDetails ? (
                                 <Loading size={20} />
@@ -1542,7 +1620,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={toggleEditMode}
-              disabled={loading}
+              disabled={loading || hasActiveUploads()}
             >
               {editMode ? (
                 <Undo className="mr-2 h-4 w-4" />
@@ -1558,6 +1636,7 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={() => setShowMenu(!showMenu)}
+              disabled={hasActiveUploads()}
             >
               <MenuIcon />
             </Button>
