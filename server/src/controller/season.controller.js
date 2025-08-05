@@ -362,10 +362,40 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       });
 
     let videoDuration = "";
+    let convertedFilePath = videoFile.path;
+    
     try {
-      videoDuration = await getVideoDuration(videoFile.path);
+      // Check if the uploaded file is WebM and convert to MP4 if needed
+      if (videoFile.mimetype === 'video/webm' || videoFile.originalname.endsWith('.webm')) {
+        console.log("Converting WebM to MP4 for PeerTube compatibility");
+        
+        const outputPath = videoFile.path.replace('.webm', '.mp4').replace('.tmp', '.mp4');
+        
+        await new Promise((resolve, reject) => {
+          ffmpeg(videoFile.path)
+            .outputOptions([
+              '-c:v libx264',
+              '-c:a aac',
+              '-preset fast',
+              '-crf 23'
+            ])
+            .output(outputPath)
+            .on('end', () => {
+              console.log("WebM to MP4 conversion completed");
+              convertedFilePath = outputPath;
+              resolve();
+            })
+            .on('error', (err) => {
+              console.error("Error converting WebM to MP4:", err);
+              reject(err);
+            })
+            .run();
+        });
+      }
+      
+      videoDuration = await getVideoDuration(convertedFilePath);
     } catch (err) {
-      console.error("Error getting video duration:", err);
+      console.error("Error getting video duration or converting:", err);
       videoDuration = "";
     }
 
@@ -386,10 +416,18 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       existingVideo.tags.forEach((tag) => formData.append("tags[]", tag));
     }
 
-    formData.append("videofile", fs.createReadStream(videoFile.path), {
-      filename: videoFile.originalname,
-      contentType: videoFile.mimetype,
-      knownLength: fs.statSync(videoFile.path).size,
+    // Use converted file if available, otherwise use original
+    const uploadFileName = convertedFilePath !== videoFile.path 
+      ? videoFile.originalname.replace('.webm', '.mp4')
+      : videoFile.originalname;
+    const uploadContentType = convertedFilePath !== videoFile.path 
+      ? 'video/mp4'
+      : videoFile.mimetype;
+    
+    formData.append("videofile", fs.createReadStream(convertedFilePath), {
+      filename: uploadFileName,
+      contentType: uploadContentType,
+      knownLength: fs.statSync(convertedFilePath).size,
     });
 
     // Upload new video to PeerTube
@@ -410,10 +448,15 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       );
     } catch (error) {
       console.error("PeerTube upload failed:", error);
-      // Clean up uploaded file
+      // Clean up uploaded file and converted file
       if (videoFile?.path) {
         try {
           await unlinkAsync(videoFile.path);
+        } catch {}
+      }
+      if (convertedFilePath && convertedFilePath !== videoFile.path) {
+        try {
+          await unlinkAsync(convertedFilePath);
         } catch {}
       }
       return res.status(500).json({
@@ -467,10 +510,13 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       { new: true }
     );
 
-    // Clean up uploaded file
+    // Clean up uploaded file and converted file
     try {
       if (videoFile?.path) {
         await unlinkAsync(videoFile.path);
+      }
+      if (convertedFilePath && convertedFilePath !== videoFile.path) {
+        await unlinkAsync(convertedFilePath);
       }
     } catch (cleanupError) {
       console.error("Error cleaning up files:", cleanupError);
@@ -491,6 +537,9 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
     try {
       if (videoFile?.path) {
         await unlinkAsync(videoFile.path);
+      }
+      if (convertedFilePath && convertedFilePath !== videoFile.path) {
+        await unlinkAsync(convertedFilePath);
       }
     } catch (cleanupError) {
       console.error("Error during cleanup:", cleanupError);

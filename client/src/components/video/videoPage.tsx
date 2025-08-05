@@ -851,9 +851,12 @@ export function VideoPageMain() {
     active: boolean;
   }>({ start: 0, end: 0, active: false });
 
-  // Add this function to handle the video replacement
+  // Enhanced function to handle the video replacement
   const handleReplaceVideo = async (videoId: string, blob: Blob) => {
-    if (!videoId || !blob) return;
+    if (!videoId || !blob) {
+      console.error("Invalid videoId or blob for replacement");
+      return;
+    }
 
     setReplacingVideo({
       videoId,
@@ -861,15 +864,43 @@ export function VideoPageMain() {
     });
 
     try {
-      // Convert Blob to File
-      const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
-        type: "video/mp4",
+      console.log("Starting video replacement:", {
+        videoId,
+        blobSize: blob.size,
+        blobType: blob.type
+      });
+
+      // Determine the correct file extension and MIME type
+      let fileName = `trimmed-${Date.now()}`;
+      let mimeType = blob.type;
+      
+      // If it's a WebM blob, we'll let the backend handle conversion
+      if (blob.type === 'video/webm') {
+        fileName += '.webm';
+        mimeType = 'video/webm';
+      } else {
+        fileName += '.mp4';
+        mimeType = 'video/mp4';
+      }
+
+      // Convert Blob to File with proper metadata
+      const file = new File([blob], fileName, {
+        type: mimeType,
+        lastModified: Date.now(),
+      });
+
+      console.log("Created file for upload:", {
+        name: file.name,
+        size: file.size,
+        type: file.type
       });
 
       // Call the updateVideoFile API
       const response = await updateVideoFile(videoId, file);
 
       if (response.success) {
+        console.log("Video replacement successful:", response.data);
+        
         // Refresh the video list
         if (selectedSeasonId && selectedGameId) {
           await handleFetchGamesVideos(selectedSeasonId, selectedGameId);
@@ -887,6 +918,8 @@ export function VideoPageMain() {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+      console.error("Video replacement failed:", error);
+      
       setReplacingVideo({
         videoId,
         status: "error",
@@ -1338,17 +1371,29 @@ export function VideoPageMain() {
                                     }
                                   }}
                                   onTrimComplete={async (blob, start, end) => {
+                                    console.log("Trim completed:", {
+                                      blobSize: blob.size,
+                                      blobType: blob.type,
+                                      start,
+                                      end,
+                                      duration: end - start
+                                    });
+                                    
                                     setTrimmedVideo({ blob, start, end });
                                     setTrimPreview({
                                       start: 0,
                                       end: 0,
                                       active: false,
                                     });
+                                    
                                     if (selectedVideo?._id) {
+                                      console.log("Starting video replacement for:", selectedVideo._id);
                                       await handleReplaceVideo(
                                         selectedVideo._id,
                                         blob
                                       );
+                                    } else {
+                                      console.error("No selected video ID for replacement");
                                     }
                                   }}
                                 />
