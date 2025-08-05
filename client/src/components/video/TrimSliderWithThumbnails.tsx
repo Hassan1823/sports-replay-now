@@ -208,9 +208,24 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     recordedChunksRef.current = [];
 
     try {
-      // Set up media recorder
+      // Set up media recorder with proper codec options
       const stream = await captureVideoStream();
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      // Use webm container with VP8 codec for better compatibility
+      const options: MediaRecorderOptions = {
+        mimeType: 'video/webm;codecs=vp8',
+        videoBitsPerSecond: 2500000, // 2.5 Mbps
+      };
+
+      // Fallback to other formats if webm is not supported
+      if (!MediaRecorder.isTypeSupported(options.mimeType!)) {
+        options.mimeType = 'video/webm';
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options.mimeType = 'video/mp4';
+        }
+      }
+
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
 
       mediaRecorderRef.current.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -219,15 +234,19 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       };
 
       mediaRecorderRef.current.onstop = () => {
+        // Create blob with proper MIME type
+        const mimeType = mediaRecorderRef.current?.mimeType || 'video/mp4';
         const blob = new Blob(recordedChunksRef.current, {
-          type: "video/mp4",
+          type: mimeType,
         });
+        
         console.log("Trimmed video details:", {
           startTime: start,
           endTime: end,
           duration: end - start,
           blobSize: blob.size,
           blobType: blob.type,
+          mimeType: mimeType,
         });
 
         if (onTrimComplete) {
@@ -240,8 +259,8 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
         setIsTrimming(false);
       };
 
-      // Start recording
-      mediaRecorderRef.current.start();
+      // Start recording with time slice for better performance
+      mediaRecorderRef.current.start(100); // Record in 100ms chunks
 
       // Seek to start position
       videoRef.current.currentTime = start;
