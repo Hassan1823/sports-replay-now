@@ -27,8 +27,11 @@ import {
   deleteGame,
   deleteVideo,
   renameVideo,
+  renameSeasonFolder,
+  renameGame,
 } from "@/app/api/peertube/api";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 type Video = {
   _id?: string;
@@ -80,6 +83,8 @@ interface LibrarySidebarProps {
   onDeleteGame?: (seasonId: string, gameId: string) => void;
   onDeleteVideo?: (videoId: string) => void;
   onRenameVideo?: (videoId: string, newTitle: string) => void;
+  onRenameSeason?: (seasonId: string, newName: string) => void;
+  onRenameGame?: (gameId: string, newName: string) => void;
 }
 
 export function LibrarySidebar({
@@ -92,7 +97,10 @@ export function LibrarySidebar({
   onDeleteGame,
   onDeleteVideo,
   onRenameVideo,
+  onRenameSeason,
+  onRenameGame,
 }: LibrarySidebarProps) {
+  const { user } = useAuth();
   const [draggedItem, setDraggedItem] = useState<{
     type: "season" | "game" | "video";
     id: string;
@@ -129,7 +137,7 @@ export function LibrarySidebar({
   };
 
   const saveRenaming = async () => {
-    if (!renamingItem) return;
+    if (!renamingItem || !user?._id) return;
 
     const { type, id, name } = renamingItem;
     if (!name.trim()) {
@@ -154,8 +162,40 @@ export function LibrarySidebar({
       }
     }
 
-    // For now, just close the renaming input for other types
-    // In the future, this could be connected to server-side updates
+    // Handle season renaming
+    if (type === "season") {
+      try {
+        const response = await renameSeasonFolder(id, name.trim(), user._id);
+        if (response.success) {
+          // Call the parent handler to update local state
+          if (onRenameSeason) {
+            await onRenameSeason(id, name.trim());
+          }
+        } else {
+          console.error("Failed to rename season:", response.message);
+        }
+      } catch (error) {
+        console.error("Error renaming season:", error);
+      }
+    }
+
+    // Handle game renaming
+    if (type === "game") {
+      try {
+        const response = await renameGame(id, name.trim());
+        if (response.success) {
+          // Call the parent handler to update local state
+          if (onRenameGame) {
+            await onRenameGame(id, name.trim());
+          }
+        } else {
+          console.error("Failed to rename game:", response.message);
+        }
+      } catch (error) {
+        console.error("Error renaming game:", error);
+      }
+    }
+
     setRenamingItem(null);
   };
 
@@ -285,7 +325,7 @@ export function LibrarySidebar({
             if (onDeleteVideo) {
               await onDeleteVideo(videoId);
             }
-            toast.success("Video deleted successfully");
+            // toast.success("Video deleted successfully");
           } else {
             toast.error(response.message || "Failed to delete video");
           }

@@ -2640,6 +2640,40 @@ export function VideoPageMain() {
               );
             }
           }}
+          onRenameSeason={async (seasonId, newName) => {
+            // Handle season renaming in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) =>
+                season.id === seasonId ? { ...season, name: newName } : season
+              )
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.map((season) =>
+                season.id === seasonId ? { ...season, name: newName } : season
+              )
+            );
+          }}
+          onRenameGame={async (gameId, newName) => {
+            // Handle game renaming in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) =>
+                  game.id === gameId ? { ...game, name: newName } : game
+                ),
+              }))
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) =>
+                  game.id === gameId ? { ...game, name: newName } : game
+                ),
+              }))
+            );
+          }}
         />
       )}
 
