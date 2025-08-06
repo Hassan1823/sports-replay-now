@@ -13,6 +13,7 @@ import {
   getVideoDetails,
   updateVideoFile,
   deleteVideo,
+  renameVideo,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -59,5 +60,8 @@ router.get("/get-video-details/:videoId", getVideoDetails);
 
 // delete video by videoId
 router.delete("/delete-video/:videoId", deleteVideo);
+
+// rename video by videoId
+router.put("/rename-video/:videoId", renameVideo);
 
 export default router;

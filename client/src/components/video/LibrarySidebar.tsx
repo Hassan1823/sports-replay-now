@@ -26,6 +26,7 @@ import {
   deleteSeasonFolder,
   deleteGame,
   deleteVideo,
+  renameVideo,
 } from "@/app/api/peertube/api";
 import { toast } from "sonner";
 
@@ -78,6 +79,7 @@ interface LibrarySidebarProps {
   onDeleteSeason?: (seasonId: string) => void;
   onDeleteGame?: (seasonId: string, gameId: string) => void;
   onDeleteVideo?: (videoId: string) => void;
+  onRenameVideo?: (videoId: string, newTitle: string) => void;
 }
 
 export function LibrarySidebar({
@@ -89,6 +91,7 @@ export function LibrarySidebar({
   onDeleteSeason,
   onDeleteGame,
   onDeleteVideo,
+  onRenameVideo,
 }: LibrarySidebarProps) {
   const [draggedItem, setDraggedItem] = useState<{
     type: "season" | "game" | "video";
@@ -125,7 +128,7 @@ export function LibrarySidebar({
     setRenamingItem({ type, id, name: currentName });
   };
 
-  const saveRenaming = () => {
+  const saveRenaming = async () => {
     if (!renamingItem) return;
 
     const { type, id, name } = renamingItem;
@@ -134,7 +137,24 @@ export function LibrarySidebar({
       return;
     }
 
-    // For now, just close the renaming input
+    // Handle video renaming
+    if (type === "video") {
+      try {
+        const response = await renameVideo(id, name.trim());
+        if (response.success) {
+          // Call the parent handler to update local state
+          if (onRenameVideo) {
+            await onRenameVideo(id, name.trim());
+          }
+        } else {
+          console.error("Failed to rename video:", response.message);
+        }
+      } catch (error) {
+        console.error("Error renaming video:", error);
+      }
+    }
+
+    // For now, just close the renaming input for other types
     // In the future, this could be connected to server-side updates
     setRenamingItem(null);
   };

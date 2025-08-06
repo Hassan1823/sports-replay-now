@@ -2598,6 +2598,48 @@ export function VideoPageMain() {
               }
             }
           }}
+          onRenameVideo={async (videoId, newTitle) => {
+            // Handle video renaming in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) => ({
+                  ...game,
+                  videos: game.videos.map((video) =>
+                    video._id === videoId
+                      ? { ...video, title: newTitle }
+                      : video
+                  ),
+                })),
+              }))
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) => ({
+                  ...game,
+                  videos: game.videos.map((video) =>
+                    video._id === videoId
+                      ? { ...video, title: newTitle }
+                      : video
+                  ),
+                })),
+              }))
+            );
+            // Also update libraryVideos if it exists there
+            setLibraryVideos((prevVideos) =>
+              prevVideos.map((video) =>
+                video._id === videoId ? { ...video, title: newTitle } : video
+              )
+            );
+            // Also update selectedVideo if it's the renamed video
+            if (selectedVideo?._id === videoId) {
+              setSelectedVideo((prev) =>
+                prev ? { ...prev, title: newTitle } : null
+              );
+            }
+          }}
         />
       )}
 

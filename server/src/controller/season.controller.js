@@ -1152,3 +1152,80 @@ export const deleteVideo = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// * rename video
+export const renameVideo = asyncHandler(async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { title } = req.body;
+
+    if (!videoId) {
+      return res.status(400).json({
+        success: false,
+        message: "Video ID is required",
+      });
+    }
+
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Video title is required",
+      });
+    }
+
+    // Find the video in the database
+    const video = await Video.findById(videoId);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Update the video title in the database
+    const updatedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      { title: title.trim() },
+      { new: true }
+    );
+
+    // Update the video title in PeerTube if it has a peertubeVideoId
+    if (video.peertubeVideoId) {
+      try {
+        const token = await getAccessToken();
+        await axios.put(
+          `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/${video.peertubeVideoId}`,
+          {
+            name: title.trim(),
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log(`Video ${video.peertubeVideoId} title updated in PeerTube`);
+      } catch (error) {
+        console.error("Error updating video title in PeerTube:", error);
+        // Continue with database update even if PeerTube update fails
+        // The database will still be updated
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Video renamed successfully",
+      data: {
+        videoId: updatedVideo._id,
+        title: updatedVideo.title,
+      },
+    });
+  } catch (error) {
+    console.log("🚀 ~ renameVideo ~ error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      details: error.response?.data || error.message,
+    });
+  }
+});

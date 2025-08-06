@@ -335,20 +335,26 @@ export const deleteVideo = async (videoId: string): Promise<ApiResponse> => {
   }
 };
 
-// Delete a video
-// export const deleteVideo = async (videoId: string): Promise<ApiResponse> => {
-//   try {
-//     const response = await fetch(`${API_BASE_URL}/peertube/delete-video`, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify({ videoId }),
-//       credentials: "include",
-//     });
-//     if (!response.ok)
-//       throw new Error((await response.json()).message || "Delete video failed");
-//     return await response.json();
-//   } catch (error) {
-//     console.error("Delete video error:", error);
-//     throw error;
-//   }
-// };
+// Rename a video
+export const renameVideo = async (
+  videoId: string,
+  title: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/rename-video/${videoId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error((await response.json()).message || "Rename video failed");
+    return await response.json();
+  } catch (error) {
+    console.error("Rename video error:", error);
+    throw error;
+  }
+};
