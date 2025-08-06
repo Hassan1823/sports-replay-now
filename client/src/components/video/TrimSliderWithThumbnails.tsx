@@ -2,6 +2,7 @@ import { PlayCircleIcon, Clock } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import Loading from "../shared/loading";
+import Image from "next/image";
 
 interface VideoDetails {
   name?: string;
@@ -21,7 +22,12 @@ interface TrimSliderWithThumbnailsProps {
   videoThumbnail?: string;
   video?: VideoDetails;
   onTrimChange?: (start: number, end: number) => void; // Add this
-  onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
+  onTrimComplete?: (
+    trimmedBlob: Blob,
+    start: number,
+    end: number,
+    duration: number
+  ) => void;
   onTrimStateChange?: (isTrimming: boolean) => void; // Add this to notify parent of trimming state
 }
 
@@ -296,8 +302,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           blobType: blob.type,
         });
 
+        const duration = end - start;
+        console.log("🚀 ~ handleTrim ~ duration:", duration);
+
         if (onTrimComplete) {
-          onTrimComplete(blob, start, end);
+          onTrimComplete(blob, start, end, duration);
         }
 
         // Restore original volume and mute state
@@ -481,10 +490,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           >
             {thumbnails.length === THUMB_COUNT
               ? thumbnails.map((thumb, idx) => (
-                  <img
+                  <Image
                     key={idx}
                     src={thumb}
                     alt={`thumb-slider-${idx}`}
+                    width={thumbSize.width}
+                    height={thumbSize.height * 0.6}
                     className="border-e-2 border-[#878510] object-cover"
                     style={{
                       flex: 1,
@@ -504,10 +515,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
                   />
                 ))
               : Array.from({ length: THUMB_COUNT }).map((_, i) => (
-                  <img
+                  <Image
                     key={i}
-                    src={videoThumbnail}
+                    src={videoThumbnail || "/placeholder-thumbnail.jpg"}
                     alt={`Video thumbnail fallback ${i + 1}`}
+                    width={Math.floor(100 / THUMB_COUNT)}
+                    height={THUMB_HEIGHT * 0.6}
                     style={{
                       width: `calc(100% / ${THUMB_COUNT})`,
                       height: THUMB_HEIGHT * 0.6,
