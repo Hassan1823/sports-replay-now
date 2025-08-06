@@ -5,6 +5,7 @@ import {
   createSeasonFolder,
   deleteGame,
   deleteSeasonFolder,
+  deleteVideo,
   getGamesForSeason,
   getSeasons,
   getVideoDetails,
@@ -137,6 +138,9 @@ export function VideoPageMain() {
     files: File[];
     muteMap: { [filename: string]: boolean };
   }>({ open: false, files: [], muteMap: {} });
+
+  // Add state to track which video is being deleted
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // Hls.js instance ref
@@ -526,21 +530,58 @@ export function VideoPageMain() {
     }
   };
 
-  // const shareSeason = (seasonId: string) => {
-  //   const base = typeof window !== "undefined" ? window.location.origin : "";
-  //   const link = `${base}/share/${seasonId}`;
-  //   setShareLink(link);
-  //   navigator.clipboard.writeText(link).then(() => {
-  //     toast.success("Copied to clipboard!");
-  //   });
-  // };
-
   const toggleEditMode = () => {
     setEditMode(!editMode);
   };
 
   const selectVideo = (video: Video) => {
     setSelectedVideo(video);
+  };
+
+  const handleDeleteVideo = async (video: Video) => {
+    console.log("🚀 ~ handleDeleteVideo ~ video:", video);
+    if (!video._id) {
+      toast.error("Cannot delete video: Missing video ID");
+      return;
+    }
+
+    try {
+      setDeletingVideoId(video._id); // Set the video being deleted
+      // toast.info("Deleting video... Please wait.");
+      await deleteVideo(video._id);
+      toast.success("Video deleted successfully");
+
+      // Remove the video from the library
+      setLibraryVideos((prev) => prev.filter((v) => v._id !== video._id));
+
+      // If the deleted video was selected, select the first available video
+      if (selectedVideo?._id === video._id) {
+        const remainingVideos = libraryVideos.filter(
+          (v) => v._id !== video._id
+        );
+        if (remainingVideos.length > 0) {
+          setSelectedVideo(remainingVideos[0]);
+        } else {
+          setSelectedVideo(null);
+        }
+      }
+
+      // Update the seasons state to reflect the deletion
+      setSeasons((prevSeasons) =>
+        prevSeasons.map((season) => ({
+          ...season,
+          games: season.games.map((game) => ({
+            ...game,
+            videos: game.videos.filter((v) => v._id !== video._id),
+          })),
+        }))
+      );
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      toast.error("Failed to delete video");
+    } finally {
+      setDeletingVideoId(null); // Reset the deletingVideoId
+    }
   };
 
   // FETCHING VIDEOS
@@ -1889,7 +1930,12 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={toggleEditMode}
-              disabled={loading || hasActiveUploads() || isTrimming()}
+              disabled={
+                loading ||
+                hasActiveUploads() ||
+                isTrimming() ||
+                deletingVideoId !== null
+              }
             >
               {editMode ? (
                 <Undo className="mr-2 h-4 w-4" />
@@ -1902,7 +1948,9 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={() => setShowLibrary(!showLibrary)}
-              disabled={hasActiveUploads() || isTrimming()}
+              disabled={
+                hasActiveUploads() || isTrimming() || deletingVideoId !== null
+              }
             >
               LIBRARY
             </Button>
@@ -1910,7 +1958,9 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={() => setShowMenu(!showMenu)}
-              disabled={hasActiveUploads() || isTrimming()}
+              disabled={
+                hasActiveUploads() || isTrimming() || deletingVideoId !== null
+              }
             >
               <MenuIcon />
             </Button>
@@ -1947,30 +1997,66 @@ export function VideoPageMain() {
                         <li
                           key={video._id}
                           className={`px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 ${
-                            isTrimming()
+                            isTrimming() || deletingVideoId === video._id
                               ? "cursor-not-allowed opacity-50"
                               : "cursor-pointer"
                           }`}
-                          onClick={() => !isTrimming() && selectVideo(video)}
+                          onClick={() =>
+                            !isTrimming() &&
+                            !editMode &&
+                            deletingVideoId !== video._id &&
+                            selectVideo(video)
+                          }
                         >
                           <div className="flex justify-start items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
-                            <Checkbox
-                              className="border-[#454444] cursor-pointer"
-                              checked={selectedVideo?._id === video._id}
-                            />
+                            {editMode ? (
+                              <Button
+                                size={"icon"}
+                                variant={"destructive"}
+                                className="h-6 w-6 bg-transparent text-destructive hover:bg-white/30 hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteVideo(video);
+                                }}
+                                disabled={
+                                  isTrimming() || deletingVideoId === video._id
+                                }
+                              >
+                                {deletingVideoId === video._id ? (
+                                  <Loading size={16} />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <Checkbox
+                                className="border-[#454444] cursor-pointer"
+                                checked={selectedVideo?._id === video._id}
+                              />
+                            )}
                             <span className="truncate block">
-                              {video.title || "no title"}
+                              {deletingVideoId === video._id ? (
+                                <span className="flex items-center gap-2">
+                                  <Loading size={12} />
+                                  Deleting...
+                                </span>
+                              ) : (
+                                video.title || "no title"
+                              )}
                             </span>
                           </div>
                           <Button
                             size={"icon"}
                             variant={"link"}
-                            onClick={() =>
+                            onClick={(e) => {
+                              e.stopPropagation();
                               showShareModal(
                                 `sharedVideo?id=${video._id}` as string
-                              )
+                              );
+                            }}
+                            disabled={
+                              isTrimming() || deletingVideoId === video._id
                             }
-                            disabled={isTrimming()}
                           >
                             <Share2 className="w-8 h-8" />
                           </Button>

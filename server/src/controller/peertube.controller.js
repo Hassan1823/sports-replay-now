@@ -926,23 +926,13 @@ const getVideoDetails = asyncHandler(async (req, res) => {
 //* Delete video
 const deleteVideo = asyncHandler(async (req, res) => {
   try {
-    const { userId, videoId } = req.body;
+    const { videoId } = req.body;
 
-    if (!userId || !videoId) {
+    if (!videoId) {
       return res.status(400).json({
         success: false,
         code: "MISSING_FIELDS",
-        message: "User ID and Video ID are required",
-      });
-    }
-
-    // Verify user exists and has PeerTube account
-    const peertubeAccount = await Peertube.findOne({ userId });
-    if (!peertubeAccount) {
-      return res.status(404).json({
-        success: false,
-        code: "PEERTUBE_ACCOUNT_NOT_FOUND",
-        message: "No PeerTube account linked to this user",
+        message: "Video ID is required",
       });
     }
 

@@ -1081,3 +1081,74 @@ export const getVideoDetails = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// * delete video
+export const deleteVideo = asyncHandler(async (req, res) => {
+  try {
+    const { videoId } = req.params;
+
+    if (!videoId) {
+      return res.status(400).json({
+        success: false,
+        message: "Video ID is required",
+      });
+    }
+
+    // Find the video in the database
+    const video = await Video.findById(videoId);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Get PeerTube access token
+    const token = await getAccessToken();
+
+    // Delete video from PeerTube if it has a peertubeVideoId
+    if (video.peertubeVideoId) {
+      try {
+        await axios.delete(
+          `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/${video.peertubeVideoId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log(`Video ${video.peertubeVideoId} deleted from PeerTube`);
+      } catch (error) {
+        console.error("Error deleting video from PeerTube:", error);
+        // Continue with database deletion even if PeerTube deletion fails
+        // (video might have been already deleted from PeerTube)
+      }
+    }
+
+    // Find the game that contains this video
+    const game = await Game.findOne({ videos: videoId });
+    if (game) {
+      // Remove the video from the game's videos array
+      await Game.findByIdAndUpdate(game._id, {
+        $pull: { videos: videoId },
+      });
+      console.log(`Video removed from game ${game._id}`);
+    }
+
+    // Delete the video from the database
+    await Video.findByIdAndDelete(videoId);
+    console.log(`Video ${videoId} deleted from database`);
+
+    return res.status(200).json({
+      success: true,
+      message: "Video deleted successfully from PeerTube and database",
+    });
+  } catch (error) {
+    console.log("🚀 ~ error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      details: error.response?.data || error.message,
+    });
+  }
+});

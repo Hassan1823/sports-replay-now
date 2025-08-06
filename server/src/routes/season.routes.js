@@ -12,6 +12,7 @@ import {
   getVideosForGame,
   getVideoDetails,
   updateVideoFile,
+  deleteVideo,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -55,5 +56,8 @@ router.get("/get-videos/:gameId", getVideosForGame);
 
 // get video details by videoId (from DB and PeerTube)
 router.get("/get-video-details/:videoId", getVideoDetails);
+
+// delete video by videoId
+router.delete("/delete-video/:videoId", deleteVideo);
 
 export default router;

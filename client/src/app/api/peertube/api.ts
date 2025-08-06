@@ -319,3 +319,39 @@ export const getVideoDetails = async (
     throw error;
   }
 };
+// Get PeerTube video details for a video
+export const deleteVideo = async (videoId: string): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/delete-video/${videoId}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error((await response.json()).message || "Delete video failed");
+    return await response.json();
+  } catch (error) {
+    console.error("Delete video error:", error);
+    throw error;
+  }
+};
+
+// Delete a video
+// export const deleteVideo = async (videoId: string): Promise<ApiResponse> => {
+//   try {
+//     const response = await fetch(`${API_BASE_URL}/peertube/delete-video`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ videoId }),
+//       credentials: "include",
+//     });
+//     if (!response.ok)
+//       throw new Error((await response.json()).message || "Delete video failed");
+//     return await response.json();
+//   } catch (error) {
+//     console.error("Delete video error:", error);
+//     throw error;
+//   }
+// };
