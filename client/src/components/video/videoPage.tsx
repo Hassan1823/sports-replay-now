@@ -1404,7 +1404,11 @@ export function VideoPageMain() {
     );
   };
 
-  const handleReplaceVideo = async (videoId: string, blob: Blob) => {
+  const handleReplaceVideo = async (
+    videoId: string,
+    blob: Blob,
+    duration: number
+  ) => {
     if (!videoId || !blob) return;
 
     setReplacingVideo({
@@ -1417,9 +1421,21 @@ export function VideoPageMain() {
       const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
         type: "video/mp4",
       });
-
       // Call the updateVideoFile API
-      const response = await updateVideoFile(videoId, duration, file);
+      console.log("🚀 ~ VideoPageMain ~ trimmedVideo:", trimmedVideo);
+      console.log(
+        "🚀 ~ handleReplaceVideo ~ duration from parameter:",
+        duration
+      );
+
+      // Format duration to MM:SS
+      const formattedDuration = formatDuration(duration);
+      console.log(
+        "🚀 ~ handleReplaceVideo ~ formatted duration:",
+        formattedDuration
+      );
+
+      const response = await updateVideoFile(videoId, formattedDuration, file);
 
       if (response.success) {
         // Refresh the video list and select the same video that was trimmed
@@ -1444,8 +1460,9 @@ export function VideoPageMain() {
 
         // Reset replacingVideo to null immediately to ensure UI is re-enabled
         setReplacingVideo(null);
-
+        // console.log("Reset replacingVideo to null immediately");
         // Check isTrimming status right before showing success toast
+        // console.log("isTrimming status before success toast:", isTrimming());
 
         toast.success("Video successfully replaced with trimmed version");
       } else {
