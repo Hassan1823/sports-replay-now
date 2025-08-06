@@ -41,7 +41,7 @@ import {
   Undo,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Hls from "hls.js";
 import { toast } from "sonner";
 import Loading from "../shared/loading";
@@ -929,14 +929,17 @@ export function VideoPageMain() {
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
   console.log("🚀 ~ VideoPageMain ~ uploadingGameId:", uploadingGameId);
 
-  // Helper function to check if there are any active uploads
-  const hasActiveUploads = () => {
+  // Memoized computation to check if there are any active uploads
+  const hasActiveUploadsValue = useMemo(() => {
     const hasUploads = Object.values(activeUploads).some((gameUploads) =>
       gameUploads.files.some((file) => file.status === "uploading")
     );
     // console.log("hasActiveUploads check:", { activeUploads, hasUploads });
     return hasUploads;
-  };
+  }, [activeUploads]);
+
+  // Helper function to check if there are any active uploads
+  const hasActiveUploads = () => hasActiveUploadsValue;
 
   const isTrimming = () => {
     const result = replacingVideo?.status === "uploading" || localTrimming;
@@ -1135,7 +1138,7 @@ export function VideoPageMain() {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails, hasActiveUploads]);
+  }, [selectedVideoDetails]);
 
   // Manage upload notification toast
   useEffect(() => {
@@ -1968,14 +1971,17 @@ export function VideoPageMain() {
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
                                   onTrimChange={(start, end) => {
-                                    setTrimPreview({
-                                      start,
-                                      end,
-                                      active: true,
-                                    });
-                                    // Seek the video to the new start time
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime = start;
+                                    // Only set trim preview if we have a valid range
+                                    if (end > start && end - start > 0.1) {
+                                      setTrimPreview({
+                                        start,
+                                        end,
+                                        active: true,
+                                      });
+                                      // Seek the video to the new start time
+                                      if (videoRef.current) {
+                                        videoRef.current.currentTime = start;
+                                      }
                                     }
                                   }}
                                   onTrimComplete={async (
@@ -2030,7 +2036,7 @@ export function VideoPageMain() {
                           <video
                             ref={videoRef}
                             controls
-                            autoPlay
+                            autoPlay={!trimPreview.active}
                             className="w-full h-full rounded-lg"
                             poster={videoThumbnail}
                             onTimeUpdate={(e) => {
@@ -2040,20 +2046,25 @@ export function VideoPageMain() {
                               // If in trim preview mode and we reach the end, loop back to start
                               if (
                                 trimPreview.active &&
-                                currentTime >= trimPreview.end
+                                trimPreview.end > trimPreview.start && // Ensure valid trim range
+                                currentTime >= trimPreview.end &&
+                                Math.abs(currentTime - trimPreview.end) < 0.1 // Prevent rapid jumping
                               ) {
                                 e.currentTarget.currentTime = trimPreview.start;
                               }
                             }}
                             onEnded={() => {
-                              if (trimPreview.active) {
+                              if (
+                                trimPreview.active &&
+                                trimPreview.end > trimPreview.start
+                              ) {
                                 // Loop the trimmed section
                                 if (videoRef.current) {
                                   videoRef.current.currentTime =
                                     trimPreview.start;
-                                  videoRef.current.play();
+                                  videoRef.current.play().catch(console.error);
                                 }
-                              } else {
+                              } else if (!trimPreview.active) {
                                 // Original behavior - go to next video
                                 const currentIdx = libraryVideos.findIndex(
                                   (v) => v._id === selectedVideo?._id

@@ -624,13 +624,7 @@ const GameComponent = () => {
                       <h4 className="text-lg font-medium text-gray-700 mb-2">
                         No Videos Found
                       </h4>
-                      <p className="text-gray-500 text-sm">
-<<<<<<< HEAD
-                        {`This game doesn't have any videos yet.`}
-=======
-                        {`     This game doesn't have any videos yet.`}
->>>>>>> origin/master
-                      </p>
+                      <p className="text-gray-500 text-sm"></p>
                     </div>
                   )}
                 </CardContent>
