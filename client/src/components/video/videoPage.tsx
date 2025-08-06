@@ -1981,8 +1981,27 @@ export function VideoPageMain() {
                                       active: false, // Keep false until actual trimming
                                     });
                                   }}
-                                  onTrimComplete={async (blob, start, end) => {
-                                    setTrimmedVideo({ blob, start, end });
+                                  onTrimComplete={async (
+                                    blob,
+                                    start,
+                                    end,
+                                    duration
+                                  ) => {
+                                    // Format duration to MM:SS for display
+                                    const formattedDuration =
+                                      formatDuration(duration);
+                                    console.log(
+                                      "🚀 ~ onTrimComplete ~ formatted duration:",
+                                      formattedDuration
+                                    );
+
+                                    setTrimmedVideo({
+                                      blob,
+                                      start,
+                                      end,
+                                      duration,
+                                      videoDuration: formattedDuration, // Add formatted duration
+                                    });
                                     setTrimPreview({
                                       start: 0,
                                       end: 0,
@@ -1991,33 +2010,21 @@ export function VideoPageMain() {
                                     if (selectedVideo?._id) {
                                       await handleReplaceVideo(
                                         selectedVideo._id,
-                                        blob
+                                        blob,
+                                        duration
                                       );
                                     }
                                   }}
                                   onTrimStateChange={(isTrimming) => {
-                                    console.log(
-                                      "onTrimStateChange called with:",
-                                      isTrimming
-                                    );
+                                    // console.log(
+                                    //   "onTrimStateChange called with:",
+                                    //   isTrimming
+                                    // );
                                     setLocalTrimming(isTrimming);
-                                    console.log(
-                                      "localTrimming state updated to:",
-                                      isTrimming
-                                    );
-
-                                    // Activate trim preview only when actually trimming
-                                    if (isTrimming) {
-                                      setTrimPreview((prev) => ({
-                                        ...prev,
-                                        active: true,
-                                      }));
-                                    } else {
-                                      setTrimPreview((prev) => ({
-                                        ...prev,
-                                        active: false,
-                                      }));
-                                    }
+                                    // console.log(
+                                    //   "localTrimming state updated to:",
+                                    //   isTrimming
+                                    // );
                                   }}
                                 />
                               </div>
