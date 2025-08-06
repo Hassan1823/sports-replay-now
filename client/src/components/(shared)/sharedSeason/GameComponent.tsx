@@ -1,27 +1,28 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import {
-  Share2,
-  Play,
-  Clock,
   Calendar,
+  Clock,
   Eye,
-  Heart,
-  Video,
   Gamepad2,
+  Heart,
+  Play,
+  Share2,
   Users,
+  Video,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-import Loading from "@/components/shared/loading";
-import Hls from "hls.js";
 import { getGameDetails, getVideoDetails } from "@/app/api/peertube/api";
 import Navbar from "@/components/Home/Navbar";
+import Loading from "@/components/shared/loading";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Hls from "hls.js";
+import Image from "next/image";
 
 type Video = {
   description: string;
@@ -329,7 +330,7 @@ const GameComponent = () => {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails]);
+  }, [selectedVideoDetails, fetchGameDetails]);
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -387,23 +388,25 @@ const GameComponent = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 lg:py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {/* Main Content Section */}
             <div className="lg:col-span-2">
               {/* Game Header */}
-              <Card className="mb-6 overflow-hidden shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+              <Card className="mb-4 sm:mb-6 overflow-hidden shadow-xl">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <Gamepad2 className="w-8 h-8 text-green-500" />
-                        <h1 className="text-3xl font-bold text-gray-900">
+                      <div className="flex items-center space-x-2 sm:space-x-3 mb-2">
+                        <Gamepad2 className="w-6 h-6 sm:w-8 sm:h-8 text-green-500" />
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                           {game.name}
                         </h1>
                       </div>
-                      <p className="text-gray-600 mb-4">{game.description}</p>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
+                        {game.description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-600">
                         <div className="flex items-center space-x-1">
                           <Video className="w-4 h-4" />
                           <span>{game.totalVideos} Videos</span>
@@ -427,23 +430,25 @@ const GameComponent = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center space-x-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Button
                       variant={isLiked ? "default" : "outline"}
                       onClick={() => setIsLiked(!isLiked)}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-1 sm:space-x-2 text-sm"
                     >
                       <Heart
-                        className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`}
+                        className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                          isLiked ? "fill-current" : ""
+                        }`}
                       />
                       <span>{isLiked ? "Liked" : "Like"}</span>
                     </Button>
                     <Button
                       variant="outline"
                       onClick={handleShare}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-1 sm:space-x-2 text-sm"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Share2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       <span>Share</span>
                     </Button>
                   </div>
@@ -452,14 +457,15 @@ const GameComponent = () => {
 
               {/* Video Player */}
               {selectedVideo ? (
-                <Card className="mb-6 overflow-hidden shadow-xl">
+                <Card className="mb-4 sm:mb-6 overflow-hidden shadow-xl">
                   <div className="relative pt-[56.25%] bg-black">
                     {isVideoLoading && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <img
+                        <Image
                           src={videoThumbnail}
                           alt={selectedVideo.title || "Video"}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <div className="text-center">
@@ -485,13 +491,13 @@ const GameComponent = () => {
                     />
                   </div>
 
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
                       <div className="flex-1">
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">
+                        <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
                           {selectedVideo.title || "Untitled Video"}
                         </h2>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                           <div className="flex items-center space-x-1">
                             <Eye className="w-4 h-4" />
                             <span>{formatViewCount(viewCount)} views</span>
@@ -506,13 +512,13 @@ const GameComponent = () => {
                       </div>
                     </div>
 
-                    <p className="text-gray-700 leading-relaxed mb-4">
+                    <p className="text-gray-700 leading-relaxed mb-3 sm:mb-4 text-sm sm:text-base">
                       {selectedVideo.description || "No description available"}
                     </p>
 
                     {/* Video Tags */}
                     {selectedVideo.tags && selectedVideo.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
                         {selectedVideo.tags.map((tag, index) => (
                           <Badge key={index} variant="secondary">
                             {tag}
@@ -523,7 +529,7 @@ const GameComponent = () => {
                   </CardContent>
                 </Card>
               ) : game.videos.length === 0 ? (
-                <Card className="mb-6 overflow-hidden shadow-xl">
+                <Card className="mb-4 sm:mb-6 overflow-hidden shadow-xl">
                   <div className="relative pt-[56.25%] bg-gray-100 flex items-center justify-center">
                     <div className="text-center">
                       <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -543,12 +549,12 @@ const GameComponent = () => {
 
               {/* Videos Grid */}
               <Card className="overflow-hidden shadow-xl">
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                <CardContent className="p-4 sm:p-6">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">
                     Videos in this Game
                   </h3>
                   {game.videos.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {game.videos.map((video) => (
                         <Card
                           key={video._id}
@@ -560,12 +566,13 @@ const GameComponent = () => {
                           onClick={() => selectVideo(video)}
                         >
                           <div className="relative">
-                            <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
+                            <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden relative">
                               {video.videoThumbnail ? (
-                                <img
+                                <Image
                                   src={video.videoThumbnail}
                                   alt={video.title || "Video thumbnail"}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = "none";
@@ -618,7 +625,11 @@ const GameComponent = () => {
                         No Videos Found
                       </h4>
                       <p className="text-gray-500 text-sm">
+<<<<<<< HEAD
                         {`This game doesn't have any videos yet.`}
+=======
+                        {`     This game doesn't have any videos yet.`}
+>>>>>>> origin/master
                       </p>
                     </div>
                   )}
@@ -627,14 +638,14 @@ const GameComponent = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Game Stats */}
               <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
+                <CardContent className="p-3 sm:p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
                     Game Stats
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Videos</span>
                       <span className="font-medium">{game.totalVideos}</span>
@@ -659,12 +670,12 @@ const GameComponent = () => {
 
               {/* Video List */}
               <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
+                <CardContent className="p-3 sm:p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
                     All Videos
                   </h3>
                   {game.videos.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {game.videos.map((video) => (
                         <div
                           key={video._id}
@@ -677,10 +688,11 @@ const GameComponent = () => {
                         >
                           <div className="w-20 h-12 rounded-lg overflow-hidden flex-shrink-0 relative">
                             {video.videoThumbnail ? (
-                              <img
+                              <Image
                                 src={video.videoThumbnail}
                                 alt={video.title || "Video thumbnail"}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = "none";
@@ -744,8 +756,8 @@ const GameComponent = () => {
 
               {/* Share Section */}
               <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
+                <CardContent className="p-3 sm:p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">
                     Share This Game
                   </h3>
                   <div className="space-y-2">

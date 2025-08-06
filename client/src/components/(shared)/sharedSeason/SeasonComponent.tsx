@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Hls from "hls.js";
+import Image from "next/image";
 
 type Video = {
   description: string;
@@ -124,18 +125,25 @@ const SeasonComponent = () => {
 
       // Get videos for each game
       const gamesWithVideos = await Promise.all(
-        gamesRes.data.map(async (game: any) => {
-          const videosRes = await getVideosForGame(game._id);
-          return {
-            id: game._id,
-            name: game.name,
-            videos:
-              videosRes.success && Array.isArray(videosRes.data)
-                ? videosRes.data
-                : [],
-            open: false,
-          };
-        })
+        gamesRes.data.map(
+          async (game: {
+            _id: string;
+            name: string;
+            seasonName?: string;
+            createdAt?: string;
+          }) => {
+            const videosRes = await getVideosForGame(game._id);
+            return {
+              id: game._id,
+              name: game.name,
+              videos:
+                videosRes.success && Array.isArray(videosRes.data)
+                  ? videosRes.data
+                  : [],
+              open: false,
+            };
+          }
+        )
       );
 
       const totalVideos = gamesWithVideos.reduce(
@@ -385,7 +393,7 @@ const SeasonComponent = () => {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails]);
+  }, [selectedVideoDetails, fetchSeasonDetails]);
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -508,10 +516,11 @@ const SeasonComponent = () => {
                   <div className="relative pt-[56.25%] bg-black">
                     {isVideoLoading && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <img
+                        <Image
                           src={videoThumbnail}
                           alt={selectedVideo.title || "Video"}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <div className="text-center">
@@ -663,10 +672,11 @@ const SeasonComponent = () => {
                         >
                           <div className="w-20 h-12 rounded-lg overflow-hidden flex-shrink-0 relative">
                             {video.videoThumbnail ? (
-                              <img
+                              <Image
                                 src={video.videoThumbnail}
                                 alt={video.title || "Video thumbnail"}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                                 onError={(e) => {
                                   // Fallback to placeholder if image fails to load
                                   const target = e.target as HTMLImageElement;

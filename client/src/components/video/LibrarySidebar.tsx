@@ -68,13 +68,20 @@ type Season = {
   open: boolean;
 };
 
+// Type for drag data that can be season, game, or video
+type DragData = Season | Game | Video | { videos: Video[]; count: number };
+
 interface LibrarySidebarProps {
   seasons: Season[];
   onClose: () => void;
   onToggleSeason?: (seasonId: string) => void;
   onToggleGame?: (seasonId: string, gameId: string) => void;
   onDragDrop?: (
-    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
+    draggedItem: {
+      type: "season" | "game" | "video";
+      id: string;
+      data: DragData;
+    },
     targetType: "season" | "game",
     targetId: string
   ) => void;
@@ -103,7 +110,7 @@ export function LibrarySidebar({
   const [draggedItem, setDraggedItem] = useState<{
     type: "season" | "game" | "video";
     id: string;
-    data: any;
+    data: DragData;
   } | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [renamingItem, setRenamingItem] = useState<{
@@ -397,7 +404,7 @@ export function LibrarySidebar({
     e: React.DragEvent,
     type: "season" | "game" | "video",
     id: string,
-    data: any
+    data: DragData
   ) => {
     if (type === "video") {
       // If dragging a video and there are multiple selected videos, drag all selected
@@ -415,14 +422,16 @@ export function LibrarySidebar({
         e.dataTransfer.setData("text/plain", `${selectedVideos.size} videos`);
       } else {
         setDraggedItem({ type, id, data });
-        e.dataTransfer.setData(
-          "text/plain",
-          data.title || data.name || "Video"
-        );
+        // Type guard to check if data has title or name property
+        const displayName =
+          "title" in data ? data.title : "name" in data ? data.name : "Video";
+        e.dataTransfer.setData("text/plain", displayName || "Video");
       }
     } else {
       setDraggedItem({ type, id, data });
-      e.dataTransfer.setData("text/plain", data.name || "Item");
+      // Type guard to check if data has name property
+      const displayName = "name" in data ? data.name : "Item";
+      e.dataTransfer.setData("text/plain", displayName || "Item");
     }
     e.dataTransfer.effectAllowed = "move";
   };

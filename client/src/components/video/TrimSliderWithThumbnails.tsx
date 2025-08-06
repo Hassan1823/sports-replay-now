@@ -2,6 +2,7 @@ import { PlayCircleIcon, Clock } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import Loading from "../shared/loading";
+import Image from "next/image";
 
 interface VideoDetails {
   name?: string;
@@ -60,10 +61,10 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 
   // Notify parent component when trimming state changes
   useEffect(() => {
-    // console.log(
-    //   "TrimSliderWithThumbnails: isTrimming state changed to:",
-    //   isTrimming
-    // );
+    console.log(
+      "TrimSliderWithThumbnails: isTrimming state changed to:",
+      isTrimming
+    );
     if (onTrimStateChange) {
       onTrimStateChange(isTrimming);
     }
@@ -489,10 +490,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           >
             {thumbnails.length === THUMB_COUNT
               ? thumbnails.map((thumb, idx) => (
-                  <img
+                  <Image
                     key={idx}
                     src={thumb}
                     alt={`thumb-slider-${idx}`}
+                    width={thumbSize.width}
+                    height={thumbSize.height * 0.6}
                     className="border-e-2 border-[#878510] object-cover"
                     style={{
                       flex: 1,
@@ -512,10 +515,12 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
                   />
                 ))
               : Array.from({ length: THUMB_COUNT }).map((_, i) => (
-                  <img
+                  <Image
                     key={i}
-                    src={videoThumbnail}
+                    src={videoThumbnail || "/placeholder-thumbnail.jpg"}
                     alt={`Video thumbnail fallback ${i + 1}`}
+                    width={Math.floor(100 / THUMB_COUNT)}
+                    height={THUMB_HEIGHT * 0.6}
                     style={{
                       width: `calc(100% / ${THUMB_COUNT})`,
                       height: THUMB_HEIGHT * 0.6,

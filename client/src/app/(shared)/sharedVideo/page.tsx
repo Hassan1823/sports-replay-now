@@ -22,6 +22,7 @@ import Navbar from "@/components/Home/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 const initialVideoDetails = {
   id: "",
@@ -256,10 +257,11 @@ const ShareVideoPage = () => {
                 <div className="relative pt-[56.25%] bg-black">
                   {isVideoLoading && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <img
+                      <Image
                         src={thumbnail}
                         alt={videoDetails.name}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        fill
+                        className="object-cover"
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                         <div className="text-center">
