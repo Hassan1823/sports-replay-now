@@ -2037,7 +2037,7 @@ export function VideoPageMain() {
                             <span className="truncate block">
                               {deletingVideoId === video._id ? (
                                 <span className="flex items-center gap-2">
-                                  <Loading size={12} />
+                                  {/* <Loading size={12} /> */}
                                   Deleting...
                                 </span>
                               ) : (
