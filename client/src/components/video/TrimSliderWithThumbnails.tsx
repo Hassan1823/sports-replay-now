@@ -492,7 +492,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               ? thumbnails.map((thumb, idx) => (
                   <Image
                     key={idx}
-                    src={thumb}
+                    src={thumb || videoThumbnail || ""}
                     alt={`thumb-slider-${idx}`}
                     width={thumbSize.width}
                     height={thumbSize.height * 0.6}
@@ -517,7 +517,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
               : Array.from({ length: THUMB_COUNT }).map((_, i) => (
                   <Image
                     key={i}
-                    src={videoThumbnail || "/placeholder-thumbnail.jpg"}
+                    src={videoThumbnail || ""}
                     alt={`Video thumbnail fallback ${i + 1}`}
                     width={Math.floor(100 / THUMB_COUNT)}
                     height={THUMB_HEIGHT * 0.6}

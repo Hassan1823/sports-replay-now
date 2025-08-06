@@ -161,7 +161,7 @@ export function VideoPageMain() {
     }
     setSelectedVideo(null);
     setSelectedVideoDetails(null);
-    setVideoThumbnail("");
+
     setCurrentPlaybackTime(0);
 
     // Stop video playback
@@ -250,7 +250,7 @@ export function VideoPageMain() {
   const navigateToNextVideo = async (nextVideo: Video) => {
     setSelectedVideo(nextVideo);
     setSelectedVideoDetails(null);
-    setVideoThumbnail("");
+
     setCurrentPlaybackTime(0);
 
     // Stop current playback
@@ -278,7 +278,7 @@ export function VideoPageMain() {
     setLibraryVideos([]);
     setSelectedVideo(null);
     setSelectedVideoDetails(null);
-    setVideoThumbnail("");
+
     setCurrentPlaybackTime(0);
 
     // Stop current playback
@@ -305,7 +305,7 @@ export function VideoPageMain() {
     setLibraryVideos([]);
     setSelectedVideo(null);
     setSelectedVideoDetails(null);
-    setVideoThumbnail("");
+
     setCurrentPlaybackTime(0);
 
     // Stop current playback

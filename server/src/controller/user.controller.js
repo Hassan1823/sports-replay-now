@@ -273,7 +273,11 @@ const sendResetPasswordEmail = asyncHandler(async (req, res) => {
       message: "Please Check Your Email",
     });
   } catch (error) {
-    console.log("🚀 ~ sendResetPasswordEmail ~ error:", error);
+    console.log("🚀 ~ sendResetPasswordEmail ~ error:", error.message);
+    // Log if it's an SMTP connection issue
+    if (error.code) {
+      console.log("SMTP Error Code:", error.code);
+    }
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
