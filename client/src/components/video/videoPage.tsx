@@ -1887,7 +1887,7 @@ export function VideoPageMain() {
         {/* main container for video player */}
         {/* <div className="flex-1 flex flex-col h-full"> */}
         <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
-          <div className="flex-1 p-4 border-b aspect-video">
+          <div className="flex-1 p-4 border-b w-full h-auto min-h-[70vh]">
             {fetchingVideoDetails ||
             replacingVideo?.status === "uploading" ||
             (libraryVideos.length === 0 &&
@@ -1906,7 +1906,7 @@ export function VideoPageMain() {
                 </div>
               </div>
             ) : selectedVideo ? (
-              <div className="h-full flex flex-col">
+              <div className="h-auto flex flex-col">
                 {/* ---------trim-------------- */}
 
                 <div className="bg-black rounded-lg aspect-video flex flex-col items-center justify-center relative">
@@ -2087,7 +2087,7 @@ export function VideoPageMain() {
           </div>
 
           {/* video chapters */}
-          <div className="h-auto p-4 overflow-y-auto">
+          <div className="min-h-auto h-full p-4 overflow-y-auto flex flex-col justify-center items-center">
             {fetchingVideos ? (
               <div className="flex items-center justify-center h-full">
                 <Loading />
