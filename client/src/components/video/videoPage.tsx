@@ -110,7 +110,9 @@ export function VideoPageMain() {
     blob: Blob | null;
     start: number;
     end: number;
-  }>({ blob: null, start: 0, end: 0 });
+    duration: number;
+    videoDuration?: string; // Add formatted duration
+  }>({ blob: null, start: 0, end: 0, duration: 0, videoDuration: "00:00" });
   console.log("🚀 ~ VideoPageMain ~ trimmedVideo:", trimmedVideo);
 
   const [selectedVideoDetails, setSelectedVideoDetails] =
