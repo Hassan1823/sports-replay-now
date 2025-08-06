@@ -217,14 +217,17 @@ export const uploadVideoToGame = async (
 // update the video
 export const updateVideoFile = async (
   videoId: string,
-  duration: number,
+  videoDuration: string,
   file: File
 ): Promise<ApiResponse> => {
   const formData = new FormData();
   formData.append("videoFile", file);
-  formData.append("duration", duration.toString());
-  console.log("🚀 ~ updateVideoFile ~ duration:", duration || "no duration");
+  formData.append("duration", videoDuration);
   try {
+    console.log(
+      "🚀 ~ updateVideoFile ~ videoDuration:",
+      videoDuration || "no duration"
+    );
     const response = await fetch(
       `${API_BASE_URL}/seasons/update-video/${videoId}`,
       {

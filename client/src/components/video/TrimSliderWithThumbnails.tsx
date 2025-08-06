@@ -22,7 +22,12 @@ interface TrimSliderWithThumbnailsProps {
   videoThumbnail?: string;
   video?: VideoDetails;
   onTrimChange?: (start: number, end: number) => void; // Add this
-  onTrimComplete?: (trimmedBlob: Blob, start: number, end: number) => void;
+  onTrimComplete?: (
+    trimmedBlob: Blob,
+    start: number,
+    end: number,
+    duration: number
+  ) => void;
   onTrimStateChange?: (isTrimming: boolean) => void; // Add this to notify parent of trimming state
 }
 
@@ -56,6 +61,10 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 
   // Notify parent component when trimming state changes
   useEffect(() => {
+    console.log(
+      "TrimSliderWithThumbnails: isTrimming state changed to:",
+      isTrimming
+    );
     if (onTrimStateChange) {
       onTrimStateChange(isTrimming);
     }
@@ -293,8 +302,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           blobType: blob.type,
         });
 
+        const duration = end - start;
+        console.log("🚀 ~ handleTrim ~ duration:", duration);
+
         if (onTrimComplete) {
-          onTrimComplete(blob, start, end);
+          onTrimComplete(blob, start, end, duration);
         }
 
         // Restore original volume and mute state

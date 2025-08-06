@@ -540,7 +540,7 @@ const GameComponent = () => {
                         {`This game doesn't have any videos yet.`}
                       </p>
                       <div className="text-sm text-gray-400">
-                        Check back later for new content!
+                        {`Check back later for new content!`}
                       </div>
                     </div>
                   </div>
@@ -624,9 +624,7 @@ const GameComponent = () => {
                       <h4 className="text-lg font-medium text-gray-700 mb-2">
                         No Videos Found
                       </h4>
-                      <p className="text-gray-500 text-sm">
-                        {`     This game doesn't have any videos yet.`}
-                      </p>
+                      <p className="text-gray-500 text-sm"></p>
                     </div>
                   )}
                 </CardContent>

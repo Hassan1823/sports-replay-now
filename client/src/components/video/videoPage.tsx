@@ -41,7 +41,7 @@ import {
   Undo,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import Hls from "hls.js";
 import { toast } from "sonner";
 import Loading from "../shared/loading";
@@ -109,8 +109,9 @@ export function VideoPageMain() {
     blob: Blob | null;
     start: number;
     end: number;
-  }>({ blob: null, start: 0, end: 0 });
-  console.log("🚀 ~ VideoPageMain ~ trimmedVideo:", trimmedVideo);
+    duration: number;
+    videoDuration?: string; // Add formatted duration
+  }>({ blob: null, start: 0, end: 0, duration: 0, videoDuration: "00:00" });
 
   const [selectedVideoDetails, setSelectedVideoDetails] =
     useState<VideoDetails | null>(null);
@@ -928,22 +929,25 @@ export function VideoPageMain() {
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
   console.log("🚀 ~ VideoPageMain ~ uploadingGameId:", uploadingGameId);
 
-  // Helper function to check if there are any active uploads
-  const hasActiveUploads = () => {
+  // Memoized computation to check if there are any active uploads
+  const hasActiveUploadsValue = useMemo(() => {
     const hasUploads = Object.values(activeUploads).some((gameUploads) =>
       gameUploads.files.some((file) => file.status === "uploading")
     );
-    console.log("hasActiveUploads check:", { activeUploads, hasUploads });
+    // console.log("hasActiveUploads check:", { activeUploads, hasUploads });
     return hasUploads;
-  };
+  }, [activeUploads]);
+
+  // Helper function to check if there are any active uploads
+  const hasActiveUploads = () => hasActiveUploadsValue;
 
   const isTrimming = () => {
     const result = replacingVideo?.status === "uploading" || localTrimming;
-    console.log("isTrimming check:", {
-      replacingVideoStatus: replacingVideo?.status,
-      localTrimming,
-      result,
-    });
+    // console.log("isTrimming check:", {
+    //   replacingVideoStatus: replacingVideo?.status,
+    //   localTrimming,
+    //   result,
+    // });
     return result;
   };
 
@@ -1134,7 +1138,7 @@ export function VideoPageMain() {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails, hasActiveUploads]);
+  }, [selectedVideoDetails]);
 
   // Manage upload notification toast
   useEffect(() => {
@@ -1194,8 +1198,12 @@ export function VideoPageMain() {
     active: boolean;
   }>({ start: 0, end: 0, active: false });
 
-  const duration = trimmedVideo.end - trimmedVideo.start; // 11 - 5 = 6 seconds
-  console.log("🚀 ~ VideoPageMain ~ duration:", duration);
+  // useEffect(() => {
+  //   setDuration(trimmedVideo.end - trimmedVideo.start); // 11 - 5 = 6 seconds
+  // }, [trimmedVideo]);
+
+  // let duration = trimmedVideo.end - trimmedVideo.start; // 11 - 5 = 6 seconds
+  // console.log("🚀 ~ VideoPageMain ~~~~~~~~ duration:", duration);
 
   // Add this function to handle the video replacement
   // const handleDragDrop = (
@@ -1398,7 +1406,20 @@ export function VideoPageMain() {
     );
   };
 
-  const handleReplaceVideo = async (videoId: string, blob: Blob) => {
+  // Function to format seconds to MM:SS format
+  const formatDuration = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const handleReplaceVideo = async (
+    videoId: string,
+    blob: Blob,
+    duration: number
+  ) => {
     if (!videoId || !blob) return;
 
     setReplacingVideo({
@@ -1411,9 +1432,21 @@ export function VideoPageMain() {
       const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
         type: "video/mp4",
       });
-
       // Call the updateVideoFile API
-      const response = await updateVideoFile(videoId, duration, file);
+      console.log("🚀 ~ VideoPageMain ~ trimmedVideo:", trimmedVideo);
+      console.log(
+        "🚀 ~ handleReplaceVideo ~ duration from parameter:",
+        duration
+      );
+
+      // Format duration to MM:SS
+      const formattedDuration = formatDuration(duration);
+      console.log(
+        "🚀 ~ handleReplaceVideo ~ formatted duration:",
+        formattedDuration
+      );
+
+      const response = await updateVideoFile(videoId, formattedDuration, file);
 
       if (response.success) {
         // Refresh the video list and select the same video that was trimmed
@@ -1438,10 +1471,9 @@ export function VideoPageMain() {
 
         // Reset replacingVideo to null immediately to ensure UI is re-enabled
         setReplacingVideo(null);
-        console.log("Reset replacingVideo to null immediately");
-
+        // console.log("Reset replacingVideo to null immediately");
         // Check isTrimming status right before showing success toast
-        console.log("isTrimming status before success toast:", isTrimming());
+        // console.log("isTrimming status before success toast:", isTrimming());
 
         toast.success("Video successfully replaced with trimmed version");
       } else {
@@ -1553,9 +1585,9 @@ export function VideoPageMain() {
                                 : "ghost"
                             }
                             size="icon"
-                            className={`h-6 w-6 hover:bg-transparent border-2 ${
+                            className={`h-6 w-6 hover:bg-transparent border-2 border-white ${
                               selectedSeasonId === season.id
-                                ? "border-[#454444] bg-black-100"
+                                ? "border-white bg-black-100"
                                 : "border-transparent"
                             }`}
                             onClick={() => {
@@ -1567,9 +1599,9 @@ export function VideoPageMain() {
                             }
                           >
                             {season.open ? (
-                              <ChevronDown className="h-4 w-4" />
+                              <ChevronDown className="h-4 w-4 text-white" />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <ChevronRight className="h-4 w-4 text-white" />
                             )}
                           </Button>
                           {renamingItem?.type === "season" &&
@@ -1594,7 +1626,7 @@ export function VideoPageMain() {
                             />
                           ) : (
                             <CardTitle
-                              className={`text-sm ${
+                              className={`text-sm text-white ${
                                 hasActiveUploads() || isTrimming()
                                   ? "cursor-not-allowed opacity-50"
                                   : "cursor-pointer"
@@ -1626,7 +1658,7 @@ export function VideoPageMain() {
                             }
                             disabled={hasActiveUploads() || isTrimming()}
                           >
-                            <Share2 className="w-8 h-8" />
+                            <Share2 className="w-8 h-8 text-white" />
                           </Button>
                           {editMode && (
                             <>
@@ -1726,9 +1758,9 @@ export function VideoPageMain() {
                                   selectedGameId === game.id ? (
                                     <Loading size={20} />
                                   ) : selectedGameId === game.id ? (
-                                    <CircleCheck className="h-4 w-4" />
+                                    <CircleCheck className="h-4 w-4 text-white" />
                                   ) : (
-                                    <Circle className="h-4 w-4" />
+                                    <Circle className="h-4 w-4 text-white" />
                                   )}
                                 </Button>
                                 {renamingItem?.type === "game" &&
@@ -1755,7 +1787,7 @@ export function VideoPageMain() {
                                   />
                                 ) : (
                                   <span
-                                    className={`text-sm ${
+                                    className={`text-sm text-white ${
                                       hasActiveUploads() || isTrimming()
                                         ? "cursor-not-allowed opacity-50"
                                         : "cursor-pointer"
@@ -1792,9 +1824,9 @@ export function VideoPageMain() {
                                         onClick={() =>
                                           fileInputRef.current?.click()
                                         }
-                                        className="hover:bg-transparent bg-transparent border-[#454444]"
+                                        className="hover:bg-transparent bg-transparent border-white"
                                       >
-                                        <PlusIcon />
+                                        <PlusIcon className="text-white" />
                                         <Input
                                           id="videoFiles"
                                           ref={fileInputRef}
@@ -1818,7 +1850,7 @@ export function VideoPageMain() {
                                   }
                                   disabled={hasActiveUploads() || isTrimming()}
                                 >
-                                  <Share2 className="w-8 h-8" />
+                                  <Share2 className="w-8 h-8 text-white" />
                                 </Button>
                                 {editMode && (
                                   <div className="flex space-x-1">
@@ -1939,18 +1971,40 @@ export function VideoPageMain() {
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
                                   onTrimChange={(start, end) => {
-                                    setTrimPreview({
-                                      start,
-                                      end,
-                                      active: true,
-                                    });
-                                    // Seek the video to the new start time
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime = start;
+                                    // Only set trim preview if we have a valid range
+                                    if (end > start && end - start > 0.1) {
+                                      setTrimPreview({
+                                        start,
+                                        end,
+                                        active: true,
+                                      });
+                                      // Seek the video to the new start time
+                                      if (videoRef.current) {
+                                        videoRef.current.currentTime = start;
+                                      }
                                     }
                                   }}
-                                  onTrimComplete={async (blob, start, end) => {
-                                    setTrimmedVideo({ blob, start, end });
+                                  onTrimComplete={async (
+                                    blob,
+                                    start,
+                                    end,
+                                    duration
+                                  ) => {
+                                    // Format duration to MM:SS for display
+                                    const formattedDuration =
+                                      formatDuration(duration);
+                                    console.log(
+                                      "🚀 ~ onTrimComplete ~ formatted duration:",
+                                      formattedDuration
+                                    );
+
+                                    setTrimmedVideo({
+                                      blob,
+                                      start,
+                                      end,
+                                      duration,
+                                      videoDuration: formattedDuration, // Add formatted duration
+                                    });
                                     setTrimPreview({
                                       start: 0,
                                       end: 0,
@@ -1959,20 +2013,21 @@ export function VideoPageMain() {
                                     if (selectedVideo?._id) {
                                       await handleReplaceVideo(
                                         selectedVideo._id,
-                                        blob
+                                        blob,
+                                        duration
                                       );
                                     }
                                   }}
                                   onTrimStateChange={(isTrimming) => {
-                                    console.log(
-                                      "onTrimStateChange called with:",
-                                      isTrimming
-                                    );
+                                    // console.log(
+                                    //   "onTrimStateChange called with:",
+                                    //   isTrimming
+                                    // );
                                     setLocalTrimming(isTrimming);
-                                    console.log(
-                                      "localTrimming state updated to:",
-                                      isTrimming
-                                    );
+                                    // console.log(
+                                    //   "localTrimming state updated to:",
+                                    //   isTrimming
+                                    // );
                                   }}
                                 />
                               </div>
@@ -1981,7 +2036,7 @@ export function VideoPageMain() {
                           <video
                             ref={videoRef}
                             controls
-                            autoPlay
+                            autoPlay={!trimPreview.active}
                             className="w-full h-full rounded-lg"
                             poster={videoThumbnail}
                             onTimeUpdate={(e) => {
@@ -1991,20 +2046,25 @@ export function VideoPageMain() {
                               // If in trim preview mode and we reach the end, loop back to start
                               if (
                                 trimPreview.active &&
-                                currentTime >= trimPreview.end
+                                trimPreview.end > trimPreview.start && // Ensure valid trim range
+                                currentTime >= trimPreview.end &&
+                                Math.abs(currentTime - trimPreview.end) < 0.1 // Prevent rapid jumping
                               ) {
                                 e.currentTarget.currentTime = trimPreview.start;
                               }
                             }}
                             onEnded={() => {
-                              if (trimPreview.active) {
+                              if (
+                                trimPreview.active &&
+                                trimPreview.end > trimPreview.start
+                              ) {
                                 // Loop the trimmed section
                                 if (videoRef.current) {
                                   videoRef.current.currentTime =
                                     trimPreview.start;
-                                  videoRef.current.play();
+                                  videoRef.current.play().catch(console.error);
                                 }
-                              } else {
+                              } else if (!trimPreview.active) {
                                 // Original behavior - go to next video
                                 const currentIdx = libraryVideos.findIndex(
                                   (v) => v._id === selectedVideo?._id
@@ -2212,7 +2272,7 @@ export function VideoPageMain() {
           </div>
 
           <Card className="border px-2 bg-[#858585] gap-1">
-            <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
+            <h2 className="text-lg text-white font-semibold mb-0 bg-[#858585]">
               {(() => {
                 const game = seasons
                   .flatMap((season) => season.games)
@@ -2231,7 +2291,7 @@ export function VideoPageMain() {
                     <>
                       {activeUploads[selectedGameId || ""]?.files.length >
                       0 ? null : (
-                        <li className="w-full h-auto flex justify-center items-center">
+                        <li className="w-full text-white h-auto flex justify-center items-center">
                           No videos found
                         </li>
                       )}
@@ -2275,11 +2335,11 @@ export function VideoPageMain() {
                               </Button>
                             ) : (
                               <Checkbox
-                                className="border-[#454444] cursor-pointer"
+                                className="text-white border-white  cursor-pointer"
                                 checked={selectedVideo?._id === video._id}
                               />
                             )}
-                            <span className="truncate block">
+                            <span className="truncate block text-white">
                               {deletingVideoId === video._id ? (
                                 <span className="flex items-center gap-2">
                                   {/* <Loading size={12} /> */}
@@ -2303,7 +2363,7 @@ export function VideoPageMain() {
                               isTrimming() || deletingVideoId === video._id
                             }
                           >
-                            <Share2 className="w-8 h-8" />
+                            <Share2 className="w-8 h-8 text-white" />
                           </Button>
                         </li>
                       ))}
@@ -2316,7 +2376,7 @@ export function VideoPageMain() {
             {activeUploads[selectedGameId || ""]?.files.map((file, idx) => (
               <li
                 key={`upload-${idx}`}
-                className="px-0 text-[0.85rem] h-auto text-primary flex items-center gap-2 max-w-[80%]"
+                className="px-0 text-[0.85rem] h-auto text-white flex items-center gap-2 max-w-[80%]"
               >
                 <span className="">
                   {file.status === "uploading" ? (

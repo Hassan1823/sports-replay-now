@@ -341,35 +341,35 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
     }
 
     // Get video duration for the new video
-    const getVideoDuration = (filePath) =>
-      new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(filePath, (err, metadata) => {
-          if (err) return reject(err);
-          if (metadata && metadata.format && metadata.format.duration) {
-            // Format duration as HH:MM:SS
-            const totalSeconds = Math.floor(metadata.format.duration);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            const formatted =
-              (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
-              String(minutes).padStart(2, "0") +
-              ":" +
-              String(seconds).padStart(2, "0");
-            resolve(formatted);
-          } else {
-            resolve("");
-          }
-        });
-      });
+    // const getVideoDuration = (filePath) =>
+    //   new Promise((resolve, reject) => {
+    //     ffmpeg.ffprobe(filePath, (err, metadata) => {
+    //       if (err) return reject(err);
+    //       if (metadata && metadata.format && metadata.format.duration) {
+    //         // Format duration as HH:MM:SS
+    //         const totalSeconds = Math.floor(metadata.format.duration);
+    //         const hours = Math.floor(totalSeconds / 3600);
+    //         const minutes = Math.floor((totalSeconds % 3600) / 60);
+    //         const seconds = totalSeconds % 60;
+    //         const formatted =
+    //           (hours > 0 ? String(hours).padStart(2, "0") + ":" : "") +
+    //           String(minutes).padStart(2, "0") +
+    //           ":" +
+    //           String(seconds).padStart(2, "0");
+    //         resolve(formatted);
+    //       } else {
+    //         resolve("");
+    //       }
+    //     });
+    //   });
 
-    let videoDuration = "";
-    try {
-      videoDuration = await getVideoDuration(videoFile.path);
-    } catch (err) {
-      console.error("Error getting video duration:", err);
-      videoDuration = "";
-    }
+    // let videoDuration = "";
+    // try {
+    //   videoDuration = await getVideoDuration(videoFile.path);
+    // } catch (err) {
+    //   console.error("Error getting video duration:", err);
+    //   videoDuration = "";
+    // }
 
     // Prepare upload to PeerTube with the same metadata as before
     const formData = new FormData();
@@ -464,7 +464,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
           ? parseFloat(duration)
           : uploadResponse.data.video.duration,
         videoThumbnail: thumbnailPath || previewPath || "",
-        videoDuration: videoDuration || existingVideo.videoDuration, // Use new duration or keep existing
+        videoDuration: duration || videoDuration || 0, // Use new duration or keep existing
         // Keep the original muteVideo status
         $setOnInsert: { muteVideo: existingVideo.muteVideo },
       },
