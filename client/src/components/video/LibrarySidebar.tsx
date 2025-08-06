@@ -664,7 +664,7 @@ export function LibrarySidebar({
                                 {selectedVideos.size === 0 && (
                                   <div className="flex items-center gap-2 p-1">
                                     <Checkbox
-                                      className="border-white data-[state=checked]:bg-black data-[state=checked]:border-gray-600"
+                                      className="border-black data-[state=checked]:bg-black data-[state=checked]:border-gray-600"
                                       checked={game.videos.every((video) =>
                                         selectedVideos.has(video._id || "")
                                       )}
