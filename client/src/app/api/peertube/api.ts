@@ -294,6 +294,27 @@ export const getVideosForGame = async (
   }
 };
 
+// Get game details with season info and videos
+export const getGameDetails = async (gameId: string): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/get-game-details/${gameId}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message || "Get game details failed"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Get game details error:", error);
+    throw error;
+  }
+};
+
 // Get PeerTube video details for a video
 export const getVideoDetails = async (
   videoId: string

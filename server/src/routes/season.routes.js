@@ -10,6 +10,7 @@ import {
   renameGame,
   deleteGame,
   getVideosForGame,
+  getGameDetails,
   getVideoDetails,
   updateVideoFile,
   deleteVideo,
@@ -54,6 +55,9 @@ router.post(
 
 // get videos for a game
 router.get("/get-videos/:gameId", getVideosForGame);
+
+// get game details with season info and videos
+router.get("/get-game-details/:gameId", getGameDetails);
 
 // get video details by videoId (from DB and PeerTube)
 router.get("/get-video-details/:videoId", getVideoDetails);

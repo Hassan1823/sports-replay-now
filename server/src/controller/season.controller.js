@@ -1038,6 +1038,61 @@ export const getVideosForGame = asyncHandler(async (req, res) => {
   return res.status(200).json({ success: true, data: game.videos });
 });
 
+// * Get game details with season info and videos
+export const getGameDetails = asyncHandler(async (req, res) => {
+  const { gameId } = req.params;
+  if (!gameId) {
+    return res.status(400).json({
+      success: false,
+      message: "Game ID is required",
+    });
+  }
+
+  try {
+    // Find the game and populate its videos
+    const game = await Game.findById(gameId).populate("videos");
+    if (!game) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Game not found" });
+    }
+
+    // Find the season that contains this game
+    const season = await Season.findOne({ games: gameId });
+    if (!season) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Season not found for this game" });
+    }
+
+    // Prepare the response data
+    const gameData = {
+      id: game._id,
+      name: game.name,
+      description:
+        game.description || "Amazing sports game with incredible moments",
+      createdAt: game.createdAt || new Date(),
+      totalVideos: game.videos ? game.videos.length : 0,
+      seasonName: season.name,
+      seasonId: season._id,
+      videos: game.videos || [],
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: gameData,
+      message: "Game details fetched successfully",
+    });
+  } catch (error) {
+    console.error("Error fetching game details:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch game details",
+      error: error.message,
+    });
+  }
+});
+
 // * Get video details by videoId (from DB and PeerTube)
 export const getVideoDetails = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
