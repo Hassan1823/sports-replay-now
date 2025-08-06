@@ -89,6 +89,7 @@ type Season = {
 export function VideoPageMain() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editMode, setEditMode] = useState(false);
+  const [autoPlayNext, setAutoPlayNext] = useState(true);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [librarySeasons, setLibrarySeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
@@ -726,7 +727,21 @@ export function VideoPageMain() {
   };
 
   const selectVideo = (video: Video) => {
+    console.log("selectVideo called with:", video.title, "ID:", video._id);
     setSelectedVideo(video);
+
+    // Small delay to ensure the video element is ready before auto-playing
+    setTimeout(() => {
+      if (videoRef.current) {
+        console.log("Auto-playing next video after selection");
+        videoRef.current.play().catch((error) => {
+          console.log(
+            "Auto-play failed (this is normal in some browsers):",
+            error
+          );
+        });
+      }
+    }, 100);
   };
 
   const handleDeleteVideo = async (video: Video) => {
@@ -1429,10 +1444,8 @@ export function VideoPageMain() {
 
         // Reset replacingVideo to null immediately to ensure UI is re-enabled
         setReplacingVideo(null);
-        console.log("Reset replacingVideo to null immediately");
 
         // Check isTrimming status right before showing success toast
-        console.log("isTrimming status before success toast:", isTrimming());
 
         toast.success("Video successfully replaced with trimmed version");
       } else {
@@ -1930,15 +1943,18 @@ export function VideoPageMain() {
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
                                   onTrimChange={(start, end) => {
-                                    setTrimPreview({
-                                      start,
-                                      end,
-                                      active: true,
-                                    });
-                                    // Seek the video to the new start time
+                                    // Only seek to the position, don't activate trim preview yet
+                                    // Trim preview should only be active when actually trimming
                                     if (videoRef.current) {
                                       videoRef.current.currentTime = start;
                                     }
+
+                                    // Store trim values but don't activate preview until trimming starts
+                                    setTrimPreview({
+                                      start,
+                                      end,
+                                      active: false, // Keep false until actual trimming
+                                    });
                                   }}
                                   onTrimComplete={async (blob, start, end) => {
                                     setTrimmedVideo({ blob, start, end });
@@ -1964,6 +1980,19 @@ export function VideoPageMain() {
                                       "localTrimming state updated to:",
                                       isTrimming
                                     );
+
+                                    // Activate trim preview only when actually trimming
+                                    if (isTrimming) {
+                                      setTrimPreview((prev) => ({
+                                        ...prev,
+                                        active: true,
+                                      }));
+                                    } else {
+                                      setTrimPreview((prev) => ({
+                                        ...prev,
+                                        active: false,
+                                      }));
+                                    }
                                   }}
                                 />
                               </div>
@@ -1988,24 +2017,74 @@ export function VideoPageMain() {
                               }
                             }}
                             onEnded={() => {
+                              console.log(
+                                "Video ended, trimPreview.active:",
+                                trimPreview.active
+                              );
+
                               if (trimPreview.active) {
                                 // Loop the trimmed section
+                                console.log("Looping trimmed section");
                                 if (videoRef.current) {
                                   videoRef.current.currentTime =
                                     trimPreview.start;
                                   videoRef.current.play();
                                 }
-                              } else {
-                                // Original behavior - go to next video
+                              } else if (autoPlayNext) {
+                                // Auto-play next video (only if autoPlayNext is enabled)
+                                console.log("Attempting to play next video");
+                                console.log(
+                                  "Current selectedVideo:",
+                                  selectedVideo?._id
+                                );
+                                console.log(
+                                  "Available libraryVideos:",
+                                  libraryVideos.map((v) => ({
+                                    id: v._id,
+                                    title: v.title,
+                                  }))
+                                );
+
                                 const currentIdx = libraryVideos.findIndex(
                                   (v) => v._id === selectedVideo?._id
                                 );
+
+                                console.log("Current video index:", currentIdx);
+                                console.log(
+                                  "Total videos:",
+                                  libraryVideos.length
+                                );
+
                                 if (
                                   currentIdx !== -1 &&
                                   currentIdx < libraryVideos.length - 1
                                 ) {
-                                  selectVideo(libraryVideos[currentIdx + 1]);
+                                  const nextVideo =
+                                    libraryVideos[currentIdx + 1];
+                                  console.log(
+                                    "Playing next video:",
+                                    nextVideo.title,
+                                    "ID:",
+                                    nextVideo._id
+                                  );
+                                  selectVideo(nextVideo);
+                                } else {
+                                  console.log(
+                                    "Reached end of playlist or video not found in library"
+                                  );
+                                  if (currentIdx === -1) {
+                                    console.log(
+                                      "Current video not found in libraryVideos array"
+                                    );
+                                  } else {
+                                    console.log(
+                                      "This was the last video in the playlist - stopping auto-play"
+                                    );
+                                    toast.info("Reached end of playlist");
+                                  }
                                 }
+                              } else {
+                                console.log("Auto-play next video is disabled");
                               }
                             }}
                           />
