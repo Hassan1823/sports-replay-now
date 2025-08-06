@@ -74,16 +74,13 @@ export const renameSeasonFolder = async (
 
 // Delete a season folder
 export const deleteSeasonFolder = async (
-  seasonId: string,
-  userId: string
+  seasonId: string
 ): Promise<ApiResponse> => {
   try {
     const response = await fetch(
       `${API_BASE_URL}/seasons/delete-folder/${seasonId}`,
       {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
         credentials: "include",
       }
     );

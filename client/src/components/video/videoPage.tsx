@@ -149,6 +149,178 @@ export function VideoPageMain() {
   const uploadingGameIdRef = useRef<string | null>(null);
   const { refreshToken, user, logout } = useAuth();
 
+  // Helper function to clean up video playback state
+  const cleanupVideoPlayback = (clearSelections = true) => {
+    if (clearSelections) {
+      setSelectedSeasonId(null);
+      setSelectedGameId(null);
+      setLibraryVideos([]);
+    }
+    setSelectedVideo(null);
+    setSelectedVideoDetails(null);
+    setVideoThumbnail("");
+    setCurrentPlaybackTime(0);
+
+    // Stop video playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (hlsInstance.current) {
+      hlsInstance.current.destroy();
+      hlsInstance.current = null;
+    }
+  };
+
+  // Helper function to find next available video in the same game
+  const findNextVideo = (currentVideoId: string, gameVideos: Video[]) => {
+    const currentIndex = gameVideos.findIndex(
+      (video) => video._id === currentVideoId
+    );
+    if (currentIndex === -1) return null;
+
+    // Try to find next video
+    for (let i = currentIndex + 1; i < gameVideos.length; i++) {
+      if (gameVideos[i]._id !== currentVideoId) {
+        return gameVideos[i];
+      }
+    }
+
+    // If no next video, try to find previous video
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (gameVideos[i]._id !== currentVideoId) {
+        return gameVideos[i];
+      }
+    }
+
+    return null;
+  };
+
+  // Helper function to find next available game in the same season
+  const findNextGame = (currentGameId: string, seasonGames: Game[]) => {
+    const currentIndex = seasonGames.findIndex(
+      (game) => game.id === currentGameId
+    );
+    if (currentIndex === -1) return null;
+
+    // Try to find next game
+    for (let i = currentIndex + 1; i < seasonGames.length; i++) {
+      if (seasonGames[i].id !== currentGameId) {
+        return seasonGames[i];
+      }
+    }
+
+    // If no next game, try to find previous game
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (seasonGames[i].id !== currentGameId) {
+        return seasonGames[i];
+      }
+    }
+
+    return null;
+  };
+
+  // Helper function to find next available season
+  const findNextSeason = (currentSeasonId: string, allSeasons: Season[]) => {
+    const currentIndex = allSeasons.findIndex(
+      (season) => season.id === currentSeasonId
+    );
+    if (currentIndex === -1) return null;
+
+    // Try to find next season
+    for (let i = currentIndex + 1; i < allSeasons.length; i++) {
+      if (allSeasons[i].id !== currentSeasonId) {
+        return allSeasons[i];
+      }
+    }
+
+    // If no next season, try to find previous season
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      if (allSeasons[i].id !== currentSeasonId) {
+        return allSeasons[i];
+      }
+    }
+
+    return null;
+  };
+
+  // Helper function to navigate to next video
+  const navigateToNextVideo = async (nextVideo: Video) => {
+    setSelectedVideo(nextVideo);
+    setSelectedVideoDetails(null);
+    setVideoThumbnail("");
+    setCurrentPlaybackTime(0);
+
+    // Stop current playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (hlsInstance.current) {
+      hlsInstance.current.destroy();
+      hlsInstance.current = null;
+    }
+
+    // Fetch video details for the new video
+    if (nextVideo._id) {
+      try {
+        await fetchVideoDetails(nextVideo._id);
+      } catch (error) {
+        console.error("Error fetching next video details:", error);
+      }
+    }
+  };
+
+  // Helper function to navigate to next game
+  const navigateToNextGame = async (nextGame: Game, seasonId: string) => {
+    setSelectedGameId(nextGame.id);
+    setLibraryVideos([]);
+    setSelectedVideo(null);
+    setSelectedVideoDetails(null);
+    setVideoThumbnail("");
+    setCurrentPlaybackTime(0);
+
+    // Stop current playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (hlsInstance.current) {
+      hlsInstance.current.destroy();
+      hlsInstance.current = null;
+    }
+
+    // Fetch videos for the new game
+    try {
+      await handleFetchGamesVideos(seasonId, nextGame.id);
+    } catch (error) {
+      console.error("Error fetching next game videos:", error);
+    }
+  };
+
+  // Helper function to navigate to next season
+  const navigateToNextSeason = async (nextSeason: Season) => {
+    setSelectedSeasonId(nextSeason.id);
+    setSelectedGameId(null);
+    setLibraryVideos([]);
+    setSelectedVideo(null);
+    setSelectedVideoDetails(null);
+    setVideoThumbnail("");
+    setCurrentPlaybackTime(0);
+
+    // Stop current playback
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    if (hlsInstance.current) {
+      hlsInstance.current.destroy();
+      hlsInstance.current = null;
+    }
+
+    // If the next season has games, navigate to the first game
+    if (nextSeason.games.length > 0) {
+      const firstGame = nextSeason.games[0];
+      await navigateToNextGame(firstGame, nextSeason.id);
+    }
+  };
+
   // GET VIDEO DETAILS
 
   // Polling logic for video readiness
@@ -448,23 +620,28 @@ export function VideoPageMain() {
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const deleteSeason = async (seasonId: string) => {
-    if (!user || !user._id) {
-      toast.error("User not found. Please login.");
-      return;
-    }
     try {
       setDeleteLoading(true);
 
-      const res = await deleteSeasonFolder(seasonId, user._id);
+      const res = await deleteSeasonFolder(seasonId);
       if (res.success) {
-        // Refetch all seasons and games after deletion, reset all selections
-        await fetchSeasons();
-        setSelectedSeasonId(null);
-        setSelectedGameId(null);
-        setSelectedVideo(null);
-        setLibraryVideos([]);
-        setSelectedVideoDetails(null);
-        toast.success("Season deleted successfully");
+        // Try to navigate to next season if current season was selected
+        if (selectedSeasonId === seasonId) {
+          const nextSeason = findNextSeason(seasonId, seasons);
+          if (nextSeason) {
+            await navigateToNextSeason(nextSeason);
+            toast.success(
+              "Season deleted successfully. Navigated to next season."
+            );
+          } else {
+            cleanupVideoPlayback(true); // Clear all if no next season
+            toast.success(
+              "Season deleted successfully. No more seasons available."
+            );
+          }
+        } else {
+          toast.success("Season deleted successfully");
+        }
       } else {
         toast.error(res.message || "Failed to delete season");
       }
@@ -509,15 +686,29 @@ export function VideoPageMain() {
         );
         setSeasons(updatedSeasons);
 
-        // Clear the video-related states if we deleted the currently selected game
+        // Try to navigate to next game if current game was selected
         if (selectedGameId === gameId) {
-          setSelectedGameId(null);
-          setSelectedVideo(null);
-          setLibraryVideos([]);
-          setSelectedVideoDetails(null);
+          const currentSeason = updatedSeasons.find((s) => s.id === seasonId);
+          if (currentSeason) {
+            const nextGame = findNextGame(gameId, currentSeason.games);
+            if (nextGame) {
+              await navigateToNextGame(nextGame, seasonId);
+              toast.success(
+                "Game deleted successfully. Navigated to next game."
+              );
+            } else {
+              cleanupVideoPlayback(true); // Clear all if no next game
+              toast.success(
+                "Game deleted successfully. No more games in this season."
+              );
+            }
+          } else {
+            cleanupVideoPlayback(true);
+            toast.success("Game deleted successfully");
+          }
+        } else {
+          toast.success("Game deleted successfully");
         }
-
-        toast.success("Game deleted successfully");
       } else {
         toast.error(res.message || "Failed to delete game");
       }
@@ -554,15 +745,21 @@ export function VideoPageMain() {
       // Remove the video from the library
       setLibraryVideos((prev) => prev.filter((v) => v._id !== video._id));
 
-      // If the deleted video was selected, select the first available video
+      // If the deleted video was selected, try to navigate to next video
       if (selectedVideo?._id === video._id) {
         const remainingVideos = libraryVideos.filter(
           (v) => v._id !== video._id
         );
-        if (remainingVideos.length > 0) {
-          setSelectedVideo(remainingVideos[0]);
+        const nextVideo = findNextVideo(video._id, remainingVideos);
+
+        if (nextVideo) {
+          await navigateToNextVideo(nextVideo);
+          toast.success("Video deleted successfully. Navigated to next video.");
         } else {
-          setSelectedVideo(null);
+          cleanupVideoPlayback(false); // Don't clear season/game selections, just video
+          toast.success(
+            "Video deleted successfully. No more videos in this game."
+          );
         }
       }
 
@@ -1084,39 +1281,78 @@ export function VideoPageMain() {
   ) => {
     // Handle local drag and drop operations for library only
     if (draggedItem.type === "video" && targetType === "game") {
-      // Move video to different game
-      const videoId = draggedItem.id;
       const targetGameId = targetId;
 
-      // Find the video and remove it from its current location
-      setLibrarySeasons((prevSeasons) => {
-        const newSeasons = [...prevSeasons];
+      // Handle multiple video drag and drop
+      if (draggedItem.id === "multiple" && draggedItem.data?.videos) {
+        const videosToMove = draggedItem.data.videos;
 
-        // Remove video from current game
-        for (const season of newSeasons) {
-          for (const game of season.games) {
-            const videoIndex = game.videos.findIndex((v) => v._id === videoId);
-            if (videoIndex !== -1) {
-              const video = game.videos[videoIndex];
-              game.videos.splice(videoIndex, 1);
+        setLibrarySeasons((prevSeasons) => {
+          const newSeasons = [...prevSeasons];
 
-              // Add video to target game
-              for (const targetSeason of newSeasons) {
-                const targetGame = targetSeason.games.find(
-                  (g) => g.id === targetGameId
+          // Remove all selected videos from their current locations
+          for (const videoToMove of videosToMove) {
+            for (const season of newSeasons) {
+              for (const game of season.games) {
+                const videoIndex = game.videos.findIndex(
+                  (v) => v._id === videoToMove._id
                 );
-                if (targetGame) {
-                  targetGame.videos.push(video);
+                if (videoIndex !== -1) {
+                  game.videos.splice(videoIndex, 1);
                   break;
                 }
               }
+            }
+          }
+
+          // Add all videos to target game
+          for (const targetSeason of newSeasons) {
+            const targetGame = targetSeason.games.find(
+              (g) => g.id === targetGameId
+            );
+            if (targetGame) {
+              targetGame.videos.push(...videosToMove);
               break;
             }
           }
-        }
 
-        return newSeasons;
-      });
+          return newSeasons;
+        });
+      } else {
+        // Handle single video drag and drop
+        const videoId = draggedItem.id;
+
+        setLibrarySeasons((prevSeasons) => {
+          const newSeasons = [...prevSeasons];
+
+          // Remove video from current game
+          for (const season of newSeasons) {
+            for (const game of season.games) {
+              const videoIndex = game.videos.findIndex(
+                (v) => v._id === videoId
+              );
+              if (videoIndex !== -1) {
+                const video = game.videos[videoIndex];
+                game.videos.splice(videoIndex, 1);
+
+                // Add video to target game
+                for (const targetSeason of newSeasons) {
+                  const targetGame = targetSeason.games.find(
+                    (g) => g.id === targetGameId
+                  );
+                  if (targetGame) {
+                    targetGame.videos.push(video);
+                    break;
+                  }
+                }
+                break;
+              }
+            }
+          }
+
+          return newSeasons;
+        });
+      }
     } else if (draggedItem.type === "game" && targetType === "season") {
       // Move game to different season
       const gameId = draggedItem.id;
@@ -2218,8 +2454,6 @@ export function VideoPageMain() {
         <LibrarySidebar
           seasons={librarySeasons}
           onClose={() => setShowLibrary(false)}
-          onSelectVideo={selectVideo}
-          selectedVideo={selectedVideo}
           onToggleSeason={(seasonId) => {
             // Library-specific toggle that only affects library state
             setLibrarySeasons((prevSeasons) =>
@@ -2246,6 +2480,124 @@ export function VideoPageMain() {
             );
           }}
           onDragDrop={handleLibraryDragDrop}
+          onDeleteSeason={async (seasonId) => {
+            // Handle season deletion in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.filter((season) => season.id !== seasonId)
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.filter((season) => season.id !== seasonId)
+            );
+
+            // Try to navigate to next season if the deleted season was selected
+            if (selectedSeasonId === seasonId) {
+              const nextSeason = findNextSeason(seasonId, seasons);
+              if (nextSeason) {
+                await navigateToNextSeason(nextSeason);
+                toast.success(
+                  "Season deleted successfully. Navigated to next season."
+                );
+              } else {
+                cleanupVideoPlayback(true); // Clear all if no next season
+                toast.success(
+                  "Season deleted successfully. No more seasons available."
+                );
+              }
+            }
+          }}
+          onDeleteGame={async (seasonId, gameId) => {
+            // Handle game deletion in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) =>
+                season.id === seasonId
+                  ? {
+                      ...season,
+                      games: season.games.filter((game) => game.id !== gameId),
+                    }
+                  : season
+              )
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.map((season) =>
+                season.id === seasonId
+                  ? {
+                      ...season,
+                      games: season.games.filter((game) => game.id !== gameId),
+                    }
+                  : season
+              )
+            );
+
+            // Try to navigate to next game if the deleted game was selected
+            if (selectedGameId === gameId) {
+              const currentSeason = seasons.find((s) => s.id === seasonId);
+              if (currentSeason) {
+                const nextGame = findNextGame(gameId, currentSeason.games);
+                if (nextGame) {
+                  await navigateToNextGame(nextGame, seasonId);
+                  toast.success(
+                    "Game deleted successfully. Navigated to next game."
+                  );
+                } else {
+                  cleanupVideoPlayback(true); // Clear all if no next game
+                  toast.success(
+                    "Game deleted successfully. No more games in this season."
+                  );
+                }
+              } else {
+                cleanupVideoPlayback(true);
+                toast.success("Game deleted successfully");
+              }
+            }
+          }}
+          onDeleteVideo={async (videoId) => {
+            // Handle video deletion in library
+            setLibrarySeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) => ({
+                  ...game,
+                  videos: game.videos.filter((video) => video._id !== videoId),
+                })),
+              }))
+            );
+            // Also update main seasons if it exists there
+            setSeasons((prevSeasons) =>
+              prevSeasons.map((season) => ({
+                ...season,
+                games: season.games.map((game) => ({
+                  ...game,
+                  videos: game.videos.filter((video) => video._id !== videoId),
+                })),
+              }))
+            );
+            // Also update libraryVideos if it exists there
+            setLibraryVideos((prevVideos) =>
+              prevVideos.filter((video) => video._id !== videoId)
+            );
+
+            // Try to navigate to next video if the deleted video was selected
+            if (selectedVideo?._id === videoId) {
+              const remainingVideos = libraryVideos.filter(
+                (v) => v._id !== videoId
+              );
+              const nextVideo = findNextVideo(videoId, remainingVideos);
+
+              if (nextVideo) {
+                await navigateToNextVideo(nextVideo);
+                toast.success(
+                  "Video deleted successfully. Navigated to next video."
+                );
+              } else {
+                cleanupVideoPlayback(false); // Don't clear season/game selections, just video
+                toast.success(
+                  "Video deleted successfully. No more videos in this game."
+                );
+              }
+            }
+          }}
         />
       )}
 
