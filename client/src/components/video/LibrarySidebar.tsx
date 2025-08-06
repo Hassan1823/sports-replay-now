@@ -135,17 +135,17 @@ export function LibrarySidebar({
       {/* Sidebar */}
       <div className="absolute right-0 top-0 h-full w-[25%] shadow-2xl flex flex-col bg-white">
         {/* Header */}
-        <div className="bg-gradient-to-r from-gray-100 to-gray-200 p-4 border-b border-gray-300">
+        <div className="bg-white p-4 border-b border-gray-300 mb-2">
           <div className="flex justify-between items-center">
-            <span className="font-bold text-gray-800 text-lg flex items-center gap-2">
-              <Folder className="h-5 w-5 text-gray-600" />
+            <span className="font-bold text-black text-lg flex items-center gap-2">
+              <Folder className="h-5 w-5 text-black" />
               Library
             </span>
             <Button
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className="text-gray-600 hover:bg-gray-300/50 rounded-full transition-all duration-200"
+              className="text-white hover:text-white bg-black hover:bg-black/90 rounded-md transition-all duration-200"
             >
               <CircleX className="h-5 w-5" />
             </Button>
@@ -154,7 +154,7 @@ export function LibrarySidebar({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-2 bg-white">
-          <div className="space-y-2">
+          <div className="space-y-1">
             {seasons.length === 0 ? (
               <div className="text-center text-gray-500 py-8">
                 <Folder className="h-12 w-12 mx-auto mb-4 text-gray-400" />
@@ -167,10 +167,10 @@ export function LibrarySidebar({
               seasons.map((season) => (
                 <div key={season.id}>
                   <div
-                    className={`cursor-pointer p-4 rounded-xl transition-all duration-200 border ${
+                    className={`cursor-pointer p-2 rounded-xl transition-all duration-200 border ${
                       dragOverTarget === season.id
-                        ? "bg-blue-50 border-blue-300 shadow-lg"
-                        : "bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:shadow-md"
+                        ? "bg-[#858585] border-gray-300 shadow-lg"
+                        : "bg-[#858585] border-gray-200 hover:bg-[#858585]/90 hover:border-gray-300 hover:shadow-md"
                     } ${
                       draggedItem?.type === "season" &&
                       draggedItem?.id === season.id
@@ -189,19 +189,19 @@ export function LibrarySidebar({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-gray-200">
-                          <Folder className="h-4 w-4 text-gray-600" />
+                          <Folder className="h-4 w-4 text-black" />
                         </div>
-                        <span className="font-semibold text-gray-800">
+                        <span className="font-semibold text-black">
                           {season.name}
                         </span>
                         {season.games.length > 0 &&
                           (season.open ? (
-                            <ChevronDown className="h-4 w-4 text-gray-500 transition-transform duration-200" />
+                            <ChevronDown className="h-4 w-4 text-black transition-transform duration-200" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 text-gray-500 transition-transform duration-200" />
+                            <ChevronRight className="h-4 w-4 text-black transition-transform duration-200" />
                           ))}
                       </div>
-                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-medium">
+                      <span className="text-xs bg-gray-200 text-black px-2 py-1 rounded-full font-medium">
                         {season.games.length} games
                       </span>
                     </div>
@@ -212,10 +212,10 @@ export function LibrarySidebar({
                       {season.games.map((game) => (
                         <div key={game.id}>
                           <div
-                            className={`cursor-pointer p-3 rounded-lg transition-all duration-200 border ${
+                            className={`cursor-pointer p-2 rounded-lg transition-all duration-200 border ${
                               dragOverTarget === game.id
-                                ? "bg-green-50 border-green-300 shadow-lg"
-                                : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md"
+                                ? "bg-[#858585] border-gray-300 shadow-lg"
+                                : "bg-[#858585] border-gray-200 hover:bg-[#858585]/90 hover:border-gray-300 hover:shadow-md"
                             } ${
                               draggedItem?.type === "game" &&
                               draggedItem?.id === game.id
@@ -234,19 +234,19 @@ export function LibrarySidebar({
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <div className="p-1.5 rounded-md bg-gray-200">
-                                  <Gamepad2 className="h-3.5 w-3.5 text-gray-600" />
+                                  <Gamepad2 className="h-3.5 w-3.5 text-black" />
                                 </div>
-                                <span className="font-medium text-gray-700">
+                                <span className="font-medium text-black">
                                   {game.name}
                                 </span>
                                 {game.videos.length > 0 &&
                                   (game.open ? (
-                                    <ChevronDown className="h-3.5 w-3.5 text-gray-500 transition-transform duration-200" />
+                                    <ChevronDown className="h-3.5 w-3.5 text-black transition-transform duration-200" />
                                   ) : (
-                                    <ChevronRight className="h-3.5 w-3.5 text-gray-500 transition-transform duration-200" />
+                                    <ChevronRight className="h-3.5 w-3.5 text-black transition-transform duration-200" />
                                   ))}
                               </div>
-                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-medium">
+                              <span className="text-xs bg-gray-200 text-black px-2 py-1 rounded-full font-medium">
                                 {game.videos.length} videos
                               </span>
                             </div>
@@ -257,10 +257,10 @@ export function LibrarySidebar({
                               {game.videos.map((video) => (
                                 <div
                                   key={video._id}
-                                  className={`cursor-pointer p-2.5 rounded-md transition-all duration-200 border ${
+                                  className={`cursor-pointer p-1.5 rounded-md transition-all duration-200 border ${
                                     dragOverTarget === video._id
-                                      ? "bg-red-50 border-red-300 shadow-md"
-                                      : "bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200 hover:shadow-sm"
+                                      ? "bg-[#858585] border-gray-300 shadow-md"
+                                      : "bg-[#858585] border-gray-100 hover:bg-[#858585]/90 hover:border-gray-200 hover:shadow-sm"
                                   } ${
                                     draggedItem?.type === "video" &&
                                     draggedItem?.id === video._id
@@ -282,15 +282,15 @@ export function LibrarySidebar({
                                   onDragLeave={(e) => setDragOverTarget(null)}
                                   onDrop={(e) => handleDrop(e, "game", game.id)}
                                 >
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
                                     <Checkbox
-                                      className="border-gray-400 data-[state=checked]:bg-gray-600 data-[state=checked]:border-gray-600"
+                                      className="border-white data-[state=checked]:bg-black data-[state=checked]:border-gray-600"
                                       checked={selectedVideo?._id === video._id}
                                     />
                                     <div className="p-1 rounded bg-gray-200">
                                       <Video className="h-3 w-3 text-gray-600" />
                                     </div>
-                                    <span className="text-sm text-gray-700 truncate font-medium">
+                                    <span className="text-xs text-black truncate font-medium">
                                       {video.title || video.name || "Untitled"}
                                     </span>
                                   </div>
