@@ -94,6 +94,10 @@ const SeasonComponent = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState("");
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  console.log(
+    "🚀 ~ SeasonComponent ~ currentPlaybackTime:",
+    currentPlaybackTime
+  );
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -277,18 +281,18 @@ const SeasonComponent = () => {
   };
 
   // Format duration
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  // const formatDuration = (seconds: number) => {
+  //   const hours = Math.floor(seconds / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   const secs = seconds % 60;
 
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-  };
+  //   if (hours > 0) {
+  //     return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+  //       .toString()
+  //       .padStart(2, "0")}`;
+  //   }
+  //   return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  // };
 
   // Format view count
   const formatViewCount = (count: number) => {

@@ -81,6 +81,7 @@ const GameComponent = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState("");
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  console.log("🚀 ~ GameComponent ~ currentPlaybackTime:", currentPlaybackTime);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -105,7 +106,7 @@ const GameComponent = () => {
         return;
       }
 
-      const gameData = gameRes.data as any;
+      const gameData = gameRes.data as Game;
       const gameInfo: Game = {
         id: gameData.id,
         name: gameData.name,
@@ -224,18 +225,18 @@ const GameComponent = () => {
   };
 
   // Format duration
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  // const formatDuration = (seconds: number) => {
+  //   const hours = Math.floor(seconds / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   const secs = seconds % 60;
 
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-  };
+  //   if (hours > 0) {
+  //     return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+  //       .toString()
+  //       .padStart(2, "0")}`;
+  //   }
+  //   return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  // };
 
   // Format view count
   const formatViewCount = (count: number) => {
@@ -530,10 +531,10 @@ const GameComponent = () => {
                         No Videos Available
                       </h3>
                       <p className="text-gray-500 mb-4">
-                        This game doesn't have any videos yet.
+                        {`This game doesn't have any videos yet.`}
                       </p>
                       <div className="text-sm text-gray-400">
-                        Check back later for new content!
+                        {`Check back later for new content!`}
                       </div>
                     </div>
                   </div>
@@ -617,7 +618,7 @@ const GameComponent = () => {
                         No Videos Found
                       </h4>
                       <p className="text-gray-500 text-sm">
-                        This game doesn't have any videos yet.
+                        {`This game doesn't have any videos yet.`}
                       </p>
                     </div>
                   )}

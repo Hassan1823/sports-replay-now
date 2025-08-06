@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import {
+  deleteGame,
+  deleteSeasonFolder,
+  deleteVideo,
+  renameGame,
+  renameSeasonFolder,
+  renameVideo,
+} from "@/app/api/peertube/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -13,25 +18,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/context/AuthContext";
 import {
-  CircleX,
   ChevronDown,
   ChevronRight,
+  CircleX,
   Folder,
-  Video,
   Gamepad2,
   Trash2,
+  Video,
 } from "lucide-react";
-import {
-  deleteSeasonFolder,
-  deleteGame,
-  deleteVideo,
-  renameVideo,
-  renameSeasonFolder,
-  renameGame,
-} from "@/app/api/peertube/api";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
 
 type Video = {
   _id?: string;
@@ -343,56 +342,56 @@ export function LibrarySidebar({
     );
   };
 
-  const handleDeleteSelectedVideos = () => {
-    if (selectedVideos.size === 0) return;
+  // const handleDeleteSelectedVideos = () => {
+  //   if (selectedVideos.size === 0) return;
 
-    const count = selectedVideos.size;
-    showDeleteModal(
-      "multiple",
-      "Delete Selected Videos",
-      `Are you sure you want to delete ${count} selected video${
-        count > 1 ? "s" : ""
-      }?`,
-      async () => {
-        setDeletingItems((prev) => new Set([...prev, ...selectedVideos]));
-        try {
-          if (onDeleteVideo) {
-            const deletePromises = Array.from(selectedVideos).map(
-              async (videoId) => {
-                try {
-                  const response = await deleteVideo(videoId);
-                  if (response.success) {
-                    await onDeleteVideo(videoId);
-                  } else {
-                    throw new Error(
-                      response.message || "Failed to delete video"
-                    );
-                  }
-                } catch (error) {
-                  console.error(`Error deleting video ${videoId}:`, error);
-                  throw error;
-                }
-              }
-            );
-            await Promise.all(deletePromises);
-            toast.success(
-              `${count} video${count > 1 ? "s" : ""} deleted successfully`
-            );
-          }
-        } catch (error) {
-          console.error("Error deleting selected videos:", error);
-          toast.error("Failed to delete some videos");
-        } finally {
-          setDeletingItems((prev) => {
-            const newSet = new Set(prev);
-            selectedVideos.forEach((videoId) => newSet.delete(videoId));
-            return newSet;
-          });
-          setSelectedVideos(new Set());
-        }
-      }
-    );
-  };
+  //   const count = selectedVideos.size;
+  //   showDeleteModal(
+  //     "multiple",
+  //     "Delete Selected Videos",
+  //     `Are you sure you want to delete ${count} selected video${
+  //       count > 1 ? "s" : ""
+  //     }?`,
+  //     async () => {
+  //       setDeletingItems((prev) => new Set([...prev, ...selectedVideos]));
+  //       try {
+  //         if (onDeleteVideo) {
+  //           const deletePromises = Array.from(selectedVideos).map(
+  //             async (videoId) => {
+  //               try {
+  //                 const response = await deleteVideo(videoId);
+  //                 if (response.success) {
+  //                   await onDeleteVideo(videoId);
+  //                 } else {
+  //                   throw new Error(
+  //                     response.message || "Failed to delete video"
+  //                   );
+  //                 }
+  //               } catch (error) {
+  //                 console.error(`Error deleting video ${videoId}:`, error);
+  //                 throw error;
+  //               }
+  //             }
+  //           );
+  //           await Promise.all(deletePromises);
+  //           toast.success(
+  //             `${count} video${count > 1 ? "s" : ""} deleted successfully`
+  //           );
+  //         }
+  //       } catch (error) {
+  //         console.error("Error deleting selected videos:", error);
+  //         toast.error("Failed to delete some videos");
+  //       } finally {
+  //         setDeletingItems((prev) => {
+  //           const newSet = new Set(prev);
+  //           selectedVideos.forEach((videoId) => newSet.delete(videoId));
+  //           return newSet;
+  //         });
+  //         setSelectedVideos(new Set());
+  //       }
+  //     }
+  //   );
+  // };
 
   const handleDragStart = (
     e: React.DragEvent,
@@ -543,7 +542,7 @@ export function LibrarySidebar({
                         handleDragStart(e, "season", season.id, season)
                       }
                       onDragOver={(e) => handleDragOver(e, season.id)}
-                      onDragLeave={(e) => setDragOverTarget(null)}
+                      onDragLeave={() => setDragOverTarget(null)}
                       onDrop={(e) => handleDrop(e, "season", season.id)}
                       onClick={() =>
                         !deletingItems.has(season.id) && toggleSeason(season.id)
@@ -642,7 +641,7 @@ export function LibrarySidebar({
                                 handleDragStart(e, "game", game.id, game)
                               }
                               onDragOver={(e) => handleDragOver(e, game.id)}
-                              onDragLeave={(e) => setDragOverTarget(null)}
+                              onDragLeave={() => setDragOverTarget(null)}
                               onDrop={(e) => handleDrop(e, "game", game.id)}
                               onClick={() =>
                                 !deletingItems.has(game.id) &&
@@ -927,7 +926,7 @@ export function LibrarySidebar({
                                     onDragOver={(e) =>
                                       handleDragOver(e, video._id || "")
                                     }
-                                    onDragLeave={(e) => setDragOverTarget(null)}
+                                    onDragLeave={() => setDragOverTarget(null)}
                                     onDrop={(e) =>
                                       handleDrop(e, "game", game.id)
                                     }

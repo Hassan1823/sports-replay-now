@@ -40,6 +40,7 @@ const initialVideoDetails = {
   ],
   thumbnailPath: "",
 };
+console.log("🚀 ~ initialVideoDetails:", initialVideoDetails);
 
 const ShareVideoPage = () => {
   const searchParams = useSearchParams();
