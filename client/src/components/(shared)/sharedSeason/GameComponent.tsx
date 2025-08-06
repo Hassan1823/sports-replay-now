@@ -1,27 +1,28 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import {
-  Share2,
-  Play,
-  Clock,
   Calendar,
+  Clock,
   Eye,
-  Heart,
-  Video,
   Gamepad2,
+  Heart,
+  Play,
+  Share2,
   Users,
+  Video,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-import Loading from "@/components/shared/loading";
-import Hls from "hls.js";
 import { getGameDetails, getVideoDetails } from "@/app/api/peertube/api";
 import Navbar from "@/components/Home/Navbar";
+import Loading from "@/components/shared/loading";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Hls from "hls.js";
+import Image from "next/image";
 
 type Video = {
   description: string;
@@ -81,6 +82,7 @@ const GameComponent = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState("");
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  console.log("🚀 ~ GameComponent ~ currentPlaybackTime:", currentPlaybackTime);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -105,7 +107,7 @@ const GameComponent = () => {
         return;
       }
 
-      const gameData = gameRes.data as any;
+      const gameData = gameRes.data as Game;
       const gameInfo: Game = {
         id: gameData.id,
         name: gameData.name,
@@ -224,18 +226,18 @@ const GameComponent = () => {
   };
 
   // Format duration
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  // const formatDuration = (seconds: number) => {
+  //   const hours = Math.floor(seconds / 3600);
+  //   const minutes = Math.floor((seconds % 3600) / 60);
+  //   const secs = seconds % 60;
 
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-  };
+  //   if (hours > 0) {
+  //     return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+  //       .toString()
+  //       .padStart(2, "0")}`;
+  //   }
+  //   return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  // };
 
   // Format view count
   const formatViewCount = (count: number) => {
@@ -328,7 +330,7 @@ const GameComponent = () => {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails]);
+  }, [selectedVideoDetails, fetchGameDetails]);
 
   if (isLoading) {
     return <Loading fullScreen />;
@@ -401,7 +403,9 @@ const GameComponent = () => {
                           {game.name}
                         </h1>
                       </div>
-                      <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">{game.description}</p>
+                      <p className="text-gray-600 mb-3 sm:mb-4 text-sm sm:text-base">
+                        {game.description}
+                      </p>
                       <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-gray-600">
                         <div className="flex items-center space-x-1">
                           <Video className="w-4 h-4" />
@@ -433,7 +437,9 @@ const GameComponent = () => {
                       className="flex items-center space-x-1 sm:space-x-2 text-sm"
                     >
                       <Heart
-                        className={`w-3 h-3 sm:w-4 sm:h-4 ${isLiked ? "fill-current" : ""}`}
+                        className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                          isLiked ? "fill-current" : ""
+                        }`}
                       />
                       <span>{isLiked ? "Liked" : "Like"}</span>
                     </Button>
@@ -455,10 +461,11 @@ const GameComponent = () => {
                   <div className="relative pt-[56.25%] bg-black">
                     {isVideoLoading && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <img
+                        <Image
                           src={videoThumbnail}
                           alt={selectedVideo.title || "Video"}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <div className="text-center">
@@ -521,8 +528,8 @@ const GameComponent = () => {
                     )}
                   </CardContent>
                 </Card>
-                             ) : game.videos.length === 0 ? (
-                 <Card className="mb-4 sm:mb-6 overflow-hidden shadow-xl">
+              ) : game.videos.length === 0 ? (
+                <Card className="mb-4 sm:mb-6 overflow-hidden shadow-xl">
                   <div className="relative pt-[56.25%] bg-gray-100 flex items-center justify-center">
                     <div className="text-center">
                       <Video className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -530,7 +537,7 @@ const GameComponent = () => {
                         No Videos Available
                       </h3>
                       <p className="text-gray-500 mb-4">
-                        This game doesn't have any videos yet.
+                        {`This game doesn't have any videos yet.`}
                       </p>
                       <div className="text-sm text-gray-400">
                         Check back later for new content!
@@ -559,12 +566,13 @@ const GameComponent = () => {
                           onClick={() => selectVideo(video)}
                         >
                           <div className="relative">
-                            <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
+                            <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden relative">
                               {video.videoThumbnail ? (
-                                <img
+                                <Image
                                   src={video.videoThumbnail}
                                   alt={video.title || "Video thumbnail"}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = "none";
@@ -617,7 +625,7 @@ const GameComponent = () => {
                         No Videos Found
                       </h4>
                       <p className="text-gray-500 text-sm">
-                        This game doesn't have any videos yet.
+                        {`     This game doesn't have any videos yet.`}
                       </p>
                     </div>
                   )}
@@ -676,10 +684,11 @@ const GameComponent = () => {
                         >
                           <div className="w-20 h-12 rounded-lg overflow-hidden flex-shrink-0 relative">
                             {video.videoThumbnail ? (
-                              <img
+                              <Image
                                 src={video.videoThumbnail}
                                 alt={video.title || "Video thumbnail"}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = "none";

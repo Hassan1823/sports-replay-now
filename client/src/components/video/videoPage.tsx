@@ -926,6 +926,7 @@ export function VideoPageMain() {
 
   // state to tract uploading gameId
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
+  console.log("🚀 ~ VideoPageMain ~ uploadingGameId:", uploadingGameId);
 
   // Helper function to check if there are any active uploads
   const hasActiveUploads = () => {
@@ -1133,7 +1134,7 @@ export function VideoPageMain() {
         hlsInstance.current = null;
       }
     };
-  }, [selectedVideoDetails]);
+  }, [selectedVideoDetails, hasActiveUploads]);
 
   // Manage upload notification toast
   useEffect(() => {
@@ -1197,85 +1198,89 @@ export function VideoPageMain() {
   console.log("🚀 ~ VideoPageMain ~ duration:", duration);
 
   // Add this function to handle the video replacement
-  const handleDragDrop = (
-    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
-    targetType: "season" | "game",
-    targetId: string
-  ) => {
-    // Handle local drag and drop operations
-    if (draggedItem.type === "video" && targetType === "game") {
-      // Move video to different game
-      const videoId = draggedItem.id;
-      const targetGameId = targetId;
+  // const handleDragDrop = (
+  //   draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
+  //   targetType: "season" | "game",
+  //   targetId: string
+  // ) => {
+  //   // Handle local drag and drop operations
+  //   if (draggedItem.type === "video" && targetType === "game") {
+  //     // Move video to different game
+  //     const videoId = draggedItem.id;
+  //     const targetGameId = targetId;
 
-      // Find the video and remove it from its current location
-      setSeasons((prevSeasons) => {
-        const newSeasons = [...prevSeasons];
+  //     // Find the video and remove it from its current location
+  //     setSeasons((prevSeasons) => {
+  //       const newSeasons = [...prevSeasons];
 
-        // Remove video from current game
-        for (const season of newSeasons) {
-          for (const game of season.games) {
-            const videoIndex = game.videos.findIndex((v) => v._id === videoId);
-            if (videoIndex !== -1) {
-              const video = game.videos[videoIndex];
-              game.videos.splice(videoIndex, 1);
+  //       // Remove video from current game
+  //       for (const season of newSeasons) {
+  //         for (const game of season.games) {
+  //           const videoIndex = game.videos.findIndex((v) => v._id === videoId);
+  //           if (videoIndex !== -1) {
+  //             const video = game.videos[videoIndex];
+  //             game.videos.splice(videoIndex, 1);
 
-              // Add video to target game
-              for (const targetSeason of newSeasons) {
-                const targetGame = targetSeason.games.find(
-                  (g) => g.id === targetGameId
-                );
-                if (targetGame) {
-                  targetGame.videos.push(video);
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        }
+  //             // Add video to target game
+  //             for (const targetSeason of newSeasons) {
+  //               const targetGame = targetSeason.games.find(
+  //                 (g) => g.id === targetGameId
+  //               );
+  //               if (targetGame) {
+  //                 targetGame.videos.push(video);
+  //                 break;
+  //               }
+  //             }
+  //             break;
+  //           }
+  //         }
+  //       }
 
-        return newSeasons;
-      });
-    } else if (draggedItem.type === "game" && targetType === "season") {
-      // Move game to different season
-      const gameId = draggedItem.id;
-      const targetSeasonId = targetId;
+  //       return newSeasons;
+  //     });
+  //   } else if (draggedItem.type === "game" && targetType === "season") {
+  //     // Move game to different season
+  //     const gameId = draggedItem.id;
+  //     const targetSeasonId = targetId;
 
-      setSeasons((prevSeasons) => {
-        const newSeasons = [...prevSeasons];
-        let gameToMove: Game | null = null;
+  //     setSeasons((prevSeasons) => {
+  //       const newSeasons = [...prevSeasons];
+  //       let gameToMove: Game | null = null;
 
-        // Find and remove game from current season
-        for (const season of newSeasons) {
-          const gameIndex = season.games.findIndex((g) => g.id === gameId);
-          if (gameIndex !== -1) {
-            gameToMove = season.games[gameIndex];
-            season.games.splice(gameIndex, 1);
-            break;
-          }
-        }
+  //       // Find and remove game from current season
+  //       for (const season of newSeasons) {
+  //         const gameIndex = season.games.findIndex((g) => g.id === gameId);
+  //         if (gameIndex !== -1) {
+  //           gameToMove = season.games[gameIndex];
+  //           season.games.splice(gameIndex, 1);
+  //           break;
+  //         }
+  //       }
 
-        // Add game to target season
-        if (gameToMove) {
-          const targetSeason = newSeasons.find((s) => s.id === targetSeasonId);
-          if (targetSeason) {
-            targetSeason.games.push(gameToMove);
-          }
-        }
+  //       // Add game to target season
+  //       if (gameToMove) {
+  //         const targetSeason = newSeasons.find((s) => s.id === targetSeasonId);
+  //         if (targetSeason) {
+  //           targetSeason.games.push(gameToMove);
+  //         }
+  //       }
 
-        return newSeasons;
-      });
-    }
+  //       return newSeasons;
+  //     });
+  //   }
 
-    console.log(
-      `Dropped ${draggedItem.type} ${draggedItem.id} into ${targetType} ${targetId}`
-    );
-  };
+  //   console.log(
+  //     `Dropped ${draggedItem.type} ${draggedItem.id} into ${targetType} ${targetId}`
+  //   );
+  // };
 
   // Separate drag drop handler for library sidebar
   const handleLibraryDragDrop = (
-    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
+    draggedItem: {
+      type: "season" | "game" | "video";
+      id: string;
+      data: Season | Game | Video | { videos: Video[]; count: number };
+    },
     targetType: "season" | "game",
     targetId: string
   ) => {
@@ -1284,7 +1289,11 @@ export function VideoPageMain() {
       const targetGameId = targetId;
 
       // Handle multiple video drag and drop
-      if (draggedItem.id === "multiple" && draggedItem.data?.videos) {
+      if (
+        draggedItem.id === "multiple" &&
+        "videos" in draggedItem.data &&
+        Array.isArray(draggedItem.data.videos)
+      ) {
         const videosToMove = draggedItem.data.videos;
 
         setLibrarySeasons((prevSeasons) => {
