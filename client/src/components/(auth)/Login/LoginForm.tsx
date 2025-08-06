@@ -74,7 +74,11 @@ export function LoginForm() {
         login(data.user);
         token(tokenData);
 
-        router.push("/");
+        if (data.user.stripePaymentStatus === "paid") {
+          router.push("/videos");
+        } else {
+          router.push("/plans");
+        }
       } else {
         toast.error(response.message || "Login failed!");
       }
