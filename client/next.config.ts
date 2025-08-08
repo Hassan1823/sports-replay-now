@@ -9,6 +9,16 @@ const nextConfig: NextConfig = {
     // Also disable ESLint during builds
     ignoreDuringBuilds: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "video.visiononline.games",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

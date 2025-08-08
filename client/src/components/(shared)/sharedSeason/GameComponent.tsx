@@ -1,27 +1,26 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 import {
-  Share2,
-  Play,
-  Clock,
   Calendar,
+  Clock,
   Eye,
-  Heart,
-  Video,
   Gamepad2,
+  Heart,
+  Play,
+  Share2,
   Users,
+  Video,
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
-import Loading from "@/components/shared/loading";
-import Hls from "hls.js";
 import { getGameDetails, getVideoDetails } from "@/app/api/peertube/api";
-import Navbar from "@/components/Home/Navbar";
+import Loading from "@/components/shared/loading";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Hls from "hls.js";
 
 type Video = {
   description: string;
@@ -337,7 +336,6 @@ const GameComponent = () => {
   if (error || !game) {
     return (
       <>
-        <Navbar />
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
           <Card className="p-8 text-center max-w-md mx-4">
             <CardContent>
@@ -384,7 +382,6 @@ const GameComponent = () => {
 
   return (
     <>
-      <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
