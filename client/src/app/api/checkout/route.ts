@@ -25,6 +25,7 @@ export async function POST(request: Request) {
         },
       ],
       mode: "subscription",
+      customer_email: email, // Pre-fill the email field in Stripe checkout
       success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/plans?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/plans&?canceled=true`,
       metadata: {

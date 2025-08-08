@@ -22,14 +22,20 @@ const Plans = () => {
   const hasProcessed = useRef(false);
   const router = useRouter();
 
-  //  hold the page for 1 sec
+  // Check if this is a payment return and set loading accordingly
   useEffect(() => {
-    setIsLoading(true);
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
+    if (sessionId && !hasProcessed.current) {
+      // User returned from payment - show loading immediately
+      setIsLoading(true);
+    } else {
+      // Normal page load - show brief loading
+      setIsLoading(true);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [sessionId]);
 
   // * saving the payment details to DB
   // * or redirecting to plans if sessionId or success is not valid
@@ -115,7 +121,7 @@ const Plans = () => {
       <Protected>
         <Navbar />
 
-        <PricingCard />
+        <PricingCard isProcessingPayment={isLoading} />
       </Protected>
     </div>
   );

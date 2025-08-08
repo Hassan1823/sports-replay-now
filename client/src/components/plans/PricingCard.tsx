@@ -9,7 +9,11 @@ import Loading from "@/components/shared/loading";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 
-export function PricingCard() {
+interface PricingCardProps {
+  isProcessingPayment?: boolean;
+}
+
+export function PricingCard({ isProcessingPayment = false }: PricingCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   const isSubscribed = user?.stripePaymentStatus === "paid";
@@ -54,7 +58,7 @@ export function PricingCard() {
     }
   };
 
-  // * if loading is true
+  // * if loading is true (internal loading state)
   if (isLoading) {
     return (
       <div className="">
@@ -63,9 +67,55 @@ export function PricingCard() {
     );
   }
 
+  // * if processing payment (external loading state from parent)
+  if (isProcessingPayment) {
+    return (
+      <div className="flex items-center justify-center min-h-[90vh] bg-gradient-to-b bg-transparent px-6">
+        <div className="w-full max-w-sm mx-4">
+          <Card className="border border-gray-200 shadow-xl overflow-hidden p-0 space-y-0">
+            {/* Loading Header */}
+            <div className="py-6 bg-gradient-to-r from-blue-600 to-blue-800">
+              <CardHeader className="text-center">
+                <CardTitle className="text-4xl font-bold text-white">
+                  <Loading size={40} className="mx-auto mb-2" />
+                </CardTitle>
+                <p className="text-xl mt-2 text-blue-100">
+                  Processing Payment...
+                </p>
+              </CardHeader>
+            </div>
+
+            <CardContent className="p-6 bg-white">
+              <div className="text-center space-y-4">
+                <p className="text-gray-700 text-lg">
+                  Please wait while we confirm your payment and set up your
+                  subscription.
+                </p>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                  <div
+                    className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-500">
+                  This may take a few moments...
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center min-h-[90vh] bg-gradient-to-b bg-transparent">
-      <div className="w-full max-w-md px-4">
+    <div className="flex items-center justify-center min-h-[90vh] bg-gradient-to-b bg-transparent px-6">
+      <div className="w-full max-w-sm mx-4">
         <Card className="border border-gray-200 shadow-xl overflow-hidden p-0 space-y-0">
           {/* Price Header */}
           <div
