@@ -1,8 +1,8 @@
-import { PlayCircleIcon, Clock } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
-import { Button } from "../ui/button";
-import Loading from "../shared/loading";
+import { Clock, Scissors } from "lucide-react";
 import Image from "next/image";
+import React, { useEffect, useRef, useState } from "react";
+import Loading from "../shared/loading";
+import { Button } from "../ui/button";
 
 interface VideoDetails {
   name?: string;
@@ -473,7 +473,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
             </>
           ) : (
             <>
-              <PlayCircleIcon size={40} fill="black" color="#858585" />
+              <Scissors size={40} color="black" />
             </>
           )}
         </Button>

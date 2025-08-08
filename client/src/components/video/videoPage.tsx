@@ -2223,7 +2223,10 @@ export function VideoPageMain() {
                               }
                               className="flex flex-col items-center h-auto p-1"
                               onClick={() => selectVideo(video)}
-                              disabled={isTrimming()}
+                              disabled={
+                                isTrimming() ||
+                                (!editMode && hasActiveUploads())
+                              }
                             >
                               <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-200">
                                 {video.videoThumbnail ? (
@@ -2296,7 +2299,12 @@ export function VideoPageMain() {
             <Button
               size={"sm"}
               className="text-xs"
-              onClick={() => setShowLibrary(!showLibrary)}
+              onClick={() => {
+                if (editMode) {
+                  setEditMode(false);
+                }
+                setShowLibrary(!showLibrary);
+              }}
               disabled={
                 hasActiveUploads() || isTrimming() || deletingVideoId !== null
               }
@@ -2352,7 +2360,6 @@ export function VideoPageMain() {
                           }`}
                           onClick={() =>
                             !isTrimming() &&
-                            !editMode &&
                             deletingVideoId !== video._id &&
                             selectVideo(video)
                           }
@@ -2404,7 +2411,9 @@ export function VideoPageMain() {
                               );
                             }}
                             disabled={
-                              isTrimming() || deletingVideoId === video._id
+                              isTrimming() ||
+                              deletingVideoId === video._id ||
+                              hasActiveUploads()
                             }
                           >
                             <Share2 className="w-8 h-8" />
