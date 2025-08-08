@@ -1480,7 +1480,8 @@ export function VideoPageMain() {
       status: "uploading",
     });
 
-    // Show toast for video processing
+    // Dismiss any existing trim toast and show processing toast
+    toast.dismiss(trimToastId);
     toast.loading("Processing trimmed video...", {
       id: "video-processing",
       description: "Preparing your video for playback",
@@ -1525,8 +1526,9 @@ export function VideoPageMain() {
         // Disable edit mode after successful trim
         setEditMode(false);
 
-        // Reset localTrimming state
+        // Reset localTrimming state and dismiss trim toast
         setLocalTrimming(false);
+        toast.dismiss(trimToastId);
 
         // Reset replacingVideo to null immediately to ensure UI is re-enabled
         setReplacingVideo(null);
@@ -1536,7 +1538,7 @@ export function VideoPageMain() {
 
         // Dismiss processing toast and show success
         toast.dismiss("video-processing");
-        toast.success("Video successfully replaced with trimmed version");
+        // toast.success("Video successfully replaced with trimmed version");
       } else {
         throw new Error(response.message || "Failed to update video");
       }
@@ -1548,8 +1550,9 @@ export function VideoPageMain() {
         status: "error",
         error: errorMessage,
       });
-      // Dismiss processing toast and show error
+      // Dismiss processing and trim toasts, show error
       toast.dismiss("video-processing");
+      toast.dismiss(trimToastId);
       toast.error(`Failed to replace video: ${errorMessage}`);
     }
   };
