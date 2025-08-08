@@ -997,6 +997,8 @@ export function VideoPageMain() {
 
   // Toast ID for upload notification
   const uploadToastId = "upload-notification";
+  // Toast ID for trim notification
+  const trimToastId = "trim-notification";
 
   // 888888888888888888888888****
   const handleUploadConfirmation = async (confirmed: boolean) => {
@@ -1478,6 +1480,12 @@ export function VideoPageMain() {
       status: "uploading",
     });
 
+    // Show toast for video processing
+    toast.loading("Processing trimmed video...", {
+      id: "video-processing",
+      description: "Preparing your video for playback",
+    });
+
     try {
       // Convert Blob to File
       const file = new File([blob], `trimmed-${Date.now()}.mp4`, {
@@ -1526,6 +1534,8 @@ export function VideoPageMain() {
         // Check isTrimming status right before showing success toast
         // console.log("isTrimming status before success toast:", isTrimming());
 
+        // Dismiss processing toast and show success
+        toast.dismiss("video-processing");
         toast.success("Video successfully replaced with trimmed version");
       } else {
         throw new Error(response.message || "Failed to update video");
@@ -1538,6 +1548,8 @@ export function VideoPageMain() {
         status: "error",
         error: errorMessage,
       });
+      // Dismiss processing toast and show error
+      toast.dismiss("video-processing");
       toast.error(`Failed to replace video: ${errorMessage}`);
     }
   };
@@ -1990,9 +2002,22 @@ export function VideoPageMain() {
                 <div className="bg-gray-200 rounded-lg aspect-video animate-pulse flex flex-col items-center justify-center relative">
                   <div className="w-full h-full bg-gray-300 rounded-lg flex items-center justify-center animate-pulse">
                     <div className="text-center">
-                      <div className="w-full h-12 bg-gray-400 rounded mx-auto mb-4 animate-pulse"></div>
+                      <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 animate-pulse flex items-center justify-center">
+                        <Loading size={32} />
+                      </div>
                       <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 animate-pulse"></div>
-                      <div className="h-3 bg-gray-400 rounded w-32 mx-auto animate-pulse"></div>
+                      <p className="text-gray-600 text-lg font-medium">
+                        {replacingVideo?.status === "uploading"
+                          ? "Processing your trimmed video..."
+                          : fetchingVideoDetails
+                          ? "Loading video details..."
+                          : "Preparing video for playback..."}
+                      </p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        {replacingVideo?.status === "uploading"
+                          ? "Your video will be ready shortly"
+                          : "Please wait a moment"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -2075,6 +2100,17 @@ export function VideoPageMain() {
                                     //   isTrimming
                                     // );
                                     setLocalTrimming(isTrimming);
+
+                                    // Show/hide trim toast based on trimming state
+                                    if (isTrimming) {
+                                      toast.loading("Trimming video...", {
+                                        id: trimToastId,
+                                        description:
+                                          "Please wait while your video is being trimmed",
+                                      });
+                                    } else {
+                                      toast.dismiss(trimToastId);
+                                    }
                                     // console.log(
                                     //   "localTrimming state updated to:",
                                     //   isTrimming
