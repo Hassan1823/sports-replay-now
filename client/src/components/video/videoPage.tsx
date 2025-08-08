@@ -628,6 +628,14 @@ export function VideoPageMain() {
 
       const res = await deleteSeasonFolder(seasonId);
       if (res.success) {
+        // Remove the deleted season from local state immediately
+        setSeasons((prevSeasons) =>
+          prevSeasons.filter((season) => season.id !== seasonId)
+        );
+        setLibrarySeasons((prevSeasons) =>
+          prevSeasons.filter((season) => season.id !== seasonId)
+        );
+
         // Try to navigate to next season if current season was selected
         if (selectedSeasonId === seasonId) {
           const nextSeason = findNextSeason(seasonId, seasons);
@@ -645,6 +653,9 @@ export function VideoPageMain() {
         } else {
           toast.success("Season deleted successfully");
         }
+
+        // Refresh seasons from server to ensure consistency
+        await fetchSeasons();
       } else {
         toast.error(res.message || "Failed to delete season");
       }
