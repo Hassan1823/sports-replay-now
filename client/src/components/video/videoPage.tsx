@@ -520,6 +520,7 @@ export function VideoPageMain() {
           games: [],
         };
         setSeasons([...seasons, newSeason]);
+        setLibrarySeasons([...librarySeasons, newSeason]);
       } else {
         toast.error(res.message || "Failed to create season");
       }
@@ -549,6 +550,13 @@ export function VideoPageMain() {
         };
         setSeasons(
           seasons.map((s) =>
+            s.id === selectedSeasonId
+              ? { ...s, games: [...s.games, newGame] }
+              : s
+          )
+        );
+        setLibrarySeasons(
+          librarySeasons.map((s) =>
             s.id === selectedSeasonId
               ? { ...s, games: [...s.games, newGame] }
               : s
@@ -592,6 +600,11 @@ export function VideoPageMain() {
               season.id === id ? { ...season, name } : season
             )
           );
+          setLibrarySeasons(
+            librarySeasons.map((season) =>
+              season.id === id ? { ...season, name } : season
+            )
+          );
         } else {
           toast.error(res.message || "Failed to rename season");
         }
@@ -600,6 +613,14 @@ export function VideoPageMain() {
         if (res.success) {
           setSeasons(
             seasons.map((season) => ({
+              ...season,
+              games: season.games.map((game) =>
+                game.id === id ? { ...game, name } : game
+              ),
+            }))
+          );
+          setLibrarySeasons(
+            librarySeasons.map((season) => ({
               ...season,
               games: season.games.map((game) =>
                 game.id === id ? { ...game, name } : game
@@ -1045,6 +1066,26 @@ export function VideoPageMain() {
 
                 // Update the seasons state without affecting UI
                 setSeasons((prevSeasons) =>
+                  prevSeasons.map((season) => {
+                    if (season.id === selectedSeasonId) {
+                      return {
+                        ...season,
+                        games: season.games.map((game) => {
+                          if (game.id === selectedGameId) {
+                            return {
+                              ...game,
+                              videos: updatedVideos,
+                            };
+                          }
+                          return game;
+                        }),
+                      };
+                    }
+                    return season;
+                  })
+                );
+                // Also update library seasons state
+                setLibrarySeasons((prevSeasons) =>
                   prevSeasons.map((season) => {
                     if (season.id === selectedSeasonId) {
                       return {
