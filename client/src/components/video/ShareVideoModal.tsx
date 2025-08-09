@@ -16,9 +16,7 @@ const ShareVideoModal: React.FC<ShareVideoModalProps> = ({
 }) => {
   // Construct the full video link
   const videoLink = `${
-    NEXT_PUBLIC_BASE_URL ||
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    "http://142.171.232.171:3000"
+    process.env.NEXT_PUBLIC_BASE_URL || "http://142.171.232.171:3000"
   }/${shareVideoId}`;
   console.log("🚀 ~ ShareVideoModal ~ videoLink:", videoLink);
 
