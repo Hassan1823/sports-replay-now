@@ -7,9 +7,9 @@ import {
   FolderOpen,
   Heart,
   Play,
-  Share2,
-  Trophy,
   Video,
+  Circle,
+  CircleCheck,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ import {
 import Loading from "@/components/shared/loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import Hls from "hls.js";
 
 type Video = {
@@ -94,6 +94,7 @@ const SeasonComponent = () => {
   const [error, setError] = useState<string | null>(null);
   const [videoThumbnail, setVideoThumbnail] = useState("");
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  const [showAllVideos, setShowAllVideos] = useState(false);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -144,7 +145,7 @@ const SeasonComponent = () => {
       const firstGame = gamesRes.data[0];
       const seasonInfo: Season = {
         id: seasonId,
-        name: firstGame?.seasonName || `Season ${seasonId.slice(-6)}`, // Use season name from game or fallback
+        name: firstGame?.seasonName || "Season", // Use season name from game or fallback without suffix
         games: gamesWithVideos,
         open: true,
         description: "Amazing sports season with incredible moments",
@@ -387,7 +388,7 @@ const SeasonComponent = () => {
     return <Loading fullScreen />;
   }
 
-  if (error || !season) {
+  if (error || !season || (season && season.games.length === 0)) {
     return (
       <>
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -395,11 +396,17 @@ const SeasonComponent = () => {
             <CardContent>
               <div className="text-6xl mb-4">🏆</div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {error ? "Error Loading Season" : "Season Not Found"}
+                {error
+                  ? "Error Loading Season"
+                  : !season
+                  ? "Season Not Found"
+                  : "No Games Found"}
               </h2>
               <p className="text-gray-600 mb-6">
                 {error ||
-                  "The season you're looking for doesn't exist or has been removed."}
+                  (!season
+                    ? "The season you're looking for doesn't exist or has been removed."
+                    : "This season has no games yet. Please check back later.")}
               </p>
 
               <div className="space-y-3">
@@ -436,79 +443,119 @@ const SeasonComponent = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Content Section */}
-            <div className="lg:col-span-2">
-              {/* Season Header */}
-              <Card className="mb-6 overflow-hidden shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+      <div className="min-h-screen bg-transparent">
+        <div className="container mx-auto px-2 lg:px-4 py-4">
+          <div className="flex lg:flex-row flex-col justify-start items-start gap-2 lg:h-full h-auto bg-transparent">
+            {/* Left sidebar: Season info and games list */}
+            <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent lg:overflow-y-auto">
+              <Card
+                className="px-0 py-2 my-1 border border-[#454444]"
+                style={{ backgroundColor: "rgb(133, 133, 133)" }}
+              >
+                <CardContent className="px-3 py-3">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <Trophy className="w-8 h-8 text-yellow-500" />
-                        <h1 className="text-3xl font-bold text-gray-900">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <CardTitle className="text-sm truncate">
                           {season.name}
-                        </h1>
+                        </CardTitle>
                       </div>
-                      <p className="text-gray-600 mb-4">{season.description}</p>
-                      <div className="flex items-center space-x-6 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <FolderOpen className="w-4 h-4" />
-                          <span>{season.totalGames} Games</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Video className="w-4 h-4" />
-                          <span>{season.totalVideos} Videos</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {season.createdAt
-                              ? new Date(season.createdAt).toLocaleDateString()
-                              : "N/A"}
-                          </span>
-                        </div>
+                      <div className="mt-1 flex items-center gap-3 text-[0.7rem] text-black/80">
+                        <span className="flex items-center gap-1">
+                          <FolderOpen className="w-3 h-3" />
+                          {season.totalGames} Games
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Video className="w-3 h-3" />
+                          {season.totalVideos} Videos
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {season.createdAt
+                            ? new Date(season.createdAt).toLocaleDateString()
+                            : "N/A"}
+                        </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-3">
-                    <Button
-                      variant={isLiked ? "default" : "outline"}
-                      onClick={() => setIsLiked(!isLiked)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`}
-                      />
-                      <span>{isLiked ? "Liked" : "Like"}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="flex items-center space-x-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </Button>
+                    {/* Sharing disabled for season */}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Video Player */}
-              {selectedVideo && (
-                <Card className="mb-6 overflow-hidden shadow-xl">
-                  <div className="relative pt-[56.25%] bg-black">
+              <Card
+                className="px-0 py-2 my-1 border border-[#454444]"
+                style={{ backgroundColor: "rgb(133, 133, 133)" }}
+              >
+                <CardContent className="px-3 py-2">
+                  <h3 className="text-xs font-semibold text-black mb-2">
+                    Games
+                  </h3>
+                  <div className="space-y-0">
+                    {season.games.map((game, idx) => (
+                      <div
+                        key={game.id}
+                        className={`w-full border-t ${
+                          idx === 0
+                            ? "border-t-transparent"
+                            : "border-t-[#454444]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full py-1 px-1 hover:bg-transparent">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 border-2 border-transparent"
+                              style={{
+                                backgroundColor:
+                                  selectedGame?.id === game.id
+                                    ? "rgb(133, 133, 133)"
+                                    : "transparent",
+                              }}
+                              onClick={() => selectGame(game)}
+                            >
+                              {selectedGame?.id === game.id ? (
+                                <CircleCheck className="h-4 w-4 text-black" />
+                              ) : (
+                                <Circle className="h-4 w-4 text-black" />
+                              )}
+                            </Button>
+                            <span
+                              className={`text-sm ${
+                                selectedGame?.id === game.id
+                                  ? "font-semibold"
+                                  : ""
+                              }`}
+                              onClick={() => selectGame(game)}
+                            >
+                              {game.name}
+                            </span>
+                          </div>
+                          <div className="text-[0.7rem] text-black/70">
+                            {game.videos.length} videos
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Middle: Video player and chapters */}
+            <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
+              <div className="flex-1 p-0 border-b aspect-video bg-black rounded">
+                {selectedVideo ? (
+                  <div className="h-full w-full relative">
                     {isVideoLoading && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <img
-                          src={videoThumbnail}
-                          alt={selectedVideo.title || "Video"}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
+                        {videoThumbnail ? (
+                          <img
+                            src={videoThumbnail}
+                            alt={selectedVideo.title || "Video"}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                        ) : null}
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <div className="text-center">
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
@@ -523,220 +570,123 @@ const SeasonComponent = () => {
                       controls
                       autoPlay
                       poster={videoThumbnail}
-                      onTimeUpdate={(e) => {
-                        setCurrentPlaybackTime(e.currentTarget.currentTime);
-                      }}
+                      onTimeUpdate={(e) =>
+                        setCurrentPlaybackTime(e.currentTarget.currentTime)
+                      }
                       onError={() => {
                         setIsVideoLoading(false);
                         toast.error("Failed to load video");
                       }}
                     />
                   </div>
-
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h2 className="text-xl font-bold text-gray-900 mb-2">
-                          {selectedVideo.title || "Untitled Video"}
-                        </h2>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                          <div className="flex items-center space-x-1">
-                            <Eye className="w-4 h-4" />
-                            <span>{formatViewCount(viewCount)} views</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>
-                              {selectedVideo.videoDuration || "00:00"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gray-200 rounded-lg">
+                    <div className="text-center">
+                      <div className="w-full h-12 bg-gray-400 rounded mx-auto mb-4"></div>
+                      <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2"></div>
+                      <div className="h-3 bg-gray-400 rounded w-32 mx-auto"></div>
+                      <h2 className="text-base font-medium mt-2">No Video</h2>
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    <p className="text-gray-700 leading-relaxed mb-4">
-                      {selectedVideo.description || "No description available"}
-                    </p>
-
-                    {/* Video Tags */}
-                    {selectedVideo.tags && selectedVideo.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedVideo.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary">
-                            {tag}
-                          </Badge>
+              {/* Chapters grid below player */}
+              <div className="h-auto p-4 overflow-y-auto">
+                {selectedGame && selectedGame.videos.length > 0 && (
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {selectedGame.videos
+                        .slice(
+                          0,
+                          showAllVideos ? selectedGame.videos.length : 4
+                        )
+                        .map((video) => (
+                          <Button
+                            key={video._id}
+                            variant={
+                              selectedVideo?._id === video._id
+                                ? "secondary"
+                                : "outline"
+                            }
+                            className="flex flex-col items-center h-auto p-1"
+                            onClick={() => selectVideo(video)}
+                          >
+                            <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-300">
+                              {video.videoThumbnail ? (
+                                <img
+                                  src={video.videoThumbnail}
+                                  alt={video.title || "Video"}
+                                  className="object-cover w-full h-full"
+                                />
+                              ) : (
+                                <span className="text-xs">No Thumbnail</span>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium truncate w-full text-center">
+                              {video.title || "Untitled"}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {video.videoDuration || "00:00"}
+                            </span>
+                          </Button>
                         ))}
+                    </div>
+                    {selectedGame.videos.length > 4 && (
+                      <div className="flex justify-center mt-4">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setShowAllVideos(!showAllVideos)}
+                        >
+                          {showAllVideos
+                            ? "Show Less"
+                            : `Show More (${selectedGame.videos.length - 4})`}
+                        </Button>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Games Grid */}
-              <Card className="overflow-hidden shadow-xl">
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">
-                    Games in this Season
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {season.games.map((game) => (
-                      <Card
-                        key={game.id}
-                        className={`cursor-pointer transition-all hover:shadow-lg ${
-                          selectedGame?.id === game.id
-                            ? "ring-2 ring-blue-500"
-                            : ""
-                        }`}
-                        onClick={() => selectGame(game)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-gray-900">
-                              {game.name}
-                            </h4>
-                            <Badge variant="outline">
-                              {game.videos.length} videos
-                            </Badge>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <Video className="w-4 h-4" />
-                            <span>{game.videos.length} videos</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                  </>
+                )}
+              </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Season Stats */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Season Stats
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Games</span>
-                      <span className="font-medium">{season.totalGames}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Videos</span>
-                      <span className="font-medium">{season.totalVideos}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Created</span>
-                      <span className="font-medium">
-                        {season.createdAt
-                          ? new Date(season.createdAt).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Current Game Videos */}
-              {selectedGame && (
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      {selectedGame.name} Videos
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedGame.videos.map((video) => (
-                        <div
+            {/* Right sidebar: Library list */}
+            <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
+              <Card className="border px-2 bg-[#858585] gap-1">
+                <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
+                  {selectedGame ? selectedGame.name : "Library"}
+                </h2>
+                <CardContent className="p-0">
+                  <ol className="list-none space-y-1 ">
+                    {!selectedGame || selectedGame.videos.length === 0 ? (
+                      <li className="w-full h-auto flex justify-center items-center text-gray-800 py-4">
+                        No videos found
+                      </li>
+                    ) : (
+                      selectedGame.videos.map((video) => (
+                        <li
                           key={video._id}
-                          className={`flex space-x-3 cursor-pointer p-2 rounded-lg transition-all duration-200 ${
-                            selectedVideo?._id === video._id
-                              ? "bg-blue-50 border border-blue-200 shadow-sm"
-                              : "hover:bg-gray-50"
-                          }`}
+                          className={`px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 cursor-pointer`}
                           onClick={() => selectVideo(video)}
                         >
-                          <div className="w-20 h-12 rounded-lg overflow-hidden flex-shrink-0 relative">
-                            {video.videoThumbnail ? (
-                              <img
-                                src={video.videoThumbnail}
-                                alt={video.title || "Video thumbnail"}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // Fallback to placeholder if image fails to load
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = "none";
-                                  target.nextElementSibling?.classList.remove(
-                                    "hidden"
-                                  );
-                                }}
-                              />
-                            ) : null}
-                            <div
-                              className={`w-full h-full bg-gray-200 flex items-center justify-center ${
-                                video.videoThumbnail ? "hidden" : ""
-                              }`}
-                            >
-                              <Play className="w-4 h-4 text-gray-500" />
+                          <div className="flex items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
+                            <div className="w-5 h-5 flex items-center justify-center">
+                              {selectedVideo?._id === video._id ? (
+                                <CircleCheck className="w-4 h-4 text-black" />
+                              ) : (
+                                <Circle className="w-4 h-4 text-black" />
+                              )}
                             </div>
-                            {/* Play indicator overlay */}
-                            {selectedVideo?._id === video._id && (
-                              <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-                                  <Play className="w-3 h-3 text-black fill-current" />
-                                </div>
-                              </div>
-                            )}
+                            <span className="truncate block">
+                              {video.title || "no title"}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-sm font-medium truncate ${
-                                selectedVideo?._id === video._id
-                                  ? "text-blue-700"
-                                  : "text-gray-900"
-                              }`}
-                            >
-                              {video.title || "Untitled"}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {video.videoDuration || "00:00"}
-                            </p>
-                            {selectedVideo?._id === video._id && (
-                              <div className="flex items-center space-x-1 mt-1">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs text-blue-600 font-medium">
-                                  Now Playing
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Share Section */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Share This Season
-                  </h3>
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Copy Link
-                    </Button>
-                    <div className="text-xs text-gray-500 text-center">
-                      Share this amazing sports season with your friends!
-                    </div>
-                  </div>
+                          <span className="text-xs text-gray-700">
+                            {video.videoDuration || "00:00"}
+                          </span>
+                        </li>
+                      ))
+                    )}
+                  </ol>
                 </CardContent>
               </Card>
             </div>

@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Share2,
   Play,
   Clock,
   Calendar,
@@ -152,22 +151,7 @@ const ShareVideoPage = () => {
     };
   }, [videoDetails]);
 
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: videoDetails?.name || "Check out this video",
-          text: videoDetails?.description || "Amazing sports content",
-          url: window.location.href,
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Link copied to clipboard!");
-      }
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
-  };
+  // Share disabled
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -327,14 +311,7 @@ const ShareVideoPage = () => {
                       <MessageCircle className="w-4 h-4" />
                       <span>Comment</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="flex items-center space-x-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </Button>
+                    {/* Sharing disabled */}
                     <Button
                       variant="outline"
                       className="flex items-center space-x-2"
@@ -433,27 +410,7 @@ const ShareVideoPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Share Section */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Share This Video
-                  </h3>
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Copy Link
-                    </Button>
-                    <div className="text-xs text-gray-500 text-center">
-                      Share this amazing sports content with your friends!
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Share section removed */}
             </div>
           </div>
         </div>

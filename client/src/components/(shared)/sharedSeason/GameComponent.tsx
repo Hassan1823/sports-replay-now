@@ -7,7 +7,6 @@ import {
   Gamepad2,
   Heart,
   Play,
-  Share2,
   Users,
   Video,
 } from "lucide-react";
@@ -204,23 +203,7 @@ const GameComponent = () => {
     }
   };
 
-  // Share functionality
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: game?.name || "Check out this game",
-          text: game?.description || "Amazing sports game",
-          url: window.location.href,
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Link copied to clipboard!");
-      }
-    } catch (error) {
-      console.error("Error sharing:", error);
-    }
-  };
+  // Share functionality removed
 
   // Format duration
   const formatDuration = (seconds: number) => {
@@ -434,14 +417,7 @@ const GameComponent = () => {
                       />
                       <span>{isLiked ? "Liked" : "Like"}</span>
                     </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleShare}
-                      className="flex items-center space-x-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </Button>
+                    {/* Sharing disabled */}
                   </div>
                 </CardContent>
               </Card>
@@ -738,27 +714,7 @@ const GameComponent = () => {
                 </CardContent>
               </Card>
 
-              {/* Share Section */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Share This Game
-                  </h3>
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={handleShare}
-                    >
-                      <Share2 className="w-4 h-4 mr-2" />
-                      Copy Link
-                    </Button>
-                    <div className="text-xs text-gray-500 text-center">
-                      Share this amazing sports game with your friends!
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Share section removed */}
             </div>
           </div>
         </div>
