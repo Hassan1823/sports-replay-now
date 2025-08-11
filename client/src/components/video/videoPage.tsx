@@ -2147,23 +2147,8 @@ export function VideoPageMain() {
                         } - Embedded Player`}
                         className="w-full h-full border-0"
                         allowFullScreen
-                        allow="autoplay; fullscreen; picture-in-picture"
+                        allow="fullscreen; picture-in-picture"
                         sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
-                        onLoad={() => {
-                          // Start monitoring the iframe for video completion
-                          if (autoPlayNext) {
-                            startVideoMonitoring();
-                          }
-                        }}
-                        onError={() => {
-                          // If iframe fails to load, move to next video immediately
-                          console.log(
-                            "Iframe failed to load, moving to next video"
-                          );
-                          if (autoPlayNext) {
-                            playNextVideo();
-                          }
-                        }}
                       />
                     </div>
                   </div>
