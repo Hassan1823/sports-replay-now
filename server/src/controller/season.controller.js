@@ -220,11 +220,15 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.thumbnailPath
       : null;
 
+    // Construct embed iframe URL
+    const embedIframeUrl = `${peertubeBaseUrl}/videos/embed/${uploadResponse.data.video.uuid}`;
+
     // Save video metadata in DB
     const videoRecord = await Video.create({
       userId: season.userId,
       peertubeVideoId: uploadResponse.data.video.id,
       videoShareLink: peertubeVideoDetails.url || "",
+      embedIframeUrl: embedIframeUrl,
       videoChannel: peertubeVideoDetails.channel.url || "",
       peertubeChannelId: peertubeAccount.peertubeChannelId,
       title: name,
@@ -263,6 +267,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
         peertube: peertubeVideoDetails,
         fullPreviewPath: previewPath,
         fullThumbnailPath: thumbnailPath,
+        embedIframeUrl: embedIframeUrl,
       },
       message: `Video ${muteVideo ? "(muted) " : ""}uploaded and linked to game successfully`,
     });
@@ -458,6 +463,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       {
         peertubeVideoId: uploadResponse.data.video.id,
         videoShareLink: peertubeVideoDetails.url || "",
+        embedIframeUrl: `${peertubeBaseUrl}/videos/embed/${uploadResponse.data.video.uuid}`,
         videoChannel: peertubeVideoDetails.channel.url || "",
         filePath: uploadResponse.data.video.url,
         duration: duration
@@ -787,6 +793,7 @@ export const uploadMultipleVideosToGame = asyncHandler(async (req, res) => {
       license,
       tags: tags ? tags.split(",").map((t) => t.trim()) : [],
       uploadStatus: "published",
+      embedIframeUrl: `${process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games"}/videos/embed/${uploadResponse.data.video.uuid}`,
     });
 
     // Add video to game

@@ -16,6 +16,11 @@ const videoSchema = new mongoose.Schema(
       required: false,
       default: "",
     },
+    embedIframeUrl: {
+      type: String,
+      required: false,
+      default: "",
+    },
     videoDuration: {
       type: String,
       required: false,

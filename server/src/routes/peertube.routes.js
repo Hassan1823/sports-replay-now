@@ -15,6 +15,9 @@ import { singleUpload, multipleUpload } from "../middlewares/video.multer.js";
 import { Video } from "../models/video.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
+// Configuration
+const MAX_USER_VIDEOS = 75;
+
 const router = Router();
 
 // * register peertube route
