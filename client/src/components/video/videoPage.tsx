@@ -69,6 +69,7 @@ type Video = {
   name?: string;
   videoThumbnail?: string;
   videoDuration?: string; // Added to fix compile error
+  embedIframeUrl?: string; // Added for PeerTube embedded player
 };
 
 type Game = {
@@ -262,13 +263,17 @@ export function VideoPageMain() {
       hlsInstance.current = null;
     }
 
-    // Fetch video details for the new video
-    if (nextVideo._id) {
+    // Only fetch video details if there's no embedIframeUrl
+    if (nextVideo._id && !nextVideo.embedIframeUrl) {
       try {
         await fetchVideoDetails(nextVideo._id);
       } catch (error) {
         console.error("Error fetching next video details:", error);
       }
+    } else if (nextVideo.embedIframeUrl) {
+      // Clear video details since we're using embedded frame
+      setSelectedVideoDetails(null);
+      setFetchingVideoDetails(false);
     }
   };
 
@@ -427,7 +432,11 @@ export function VideoPageMain() {
         if (firstGame.videos.length > 0) {
           const firstVideo = firstGame.videos[0];
           setSelectedVideo(firstVideo);
-          fetchVideoDetails(firstVideo._id || "");
+
+          // Only fetch video details if there's no embedIframeUrl
+          if (!firstVideo.embedIframeUrl && firstVideo._id) {
+            fetchVideoDetails(firstVideo._id);
+          }
         }
       }
     }
@@ -435,7 +444,14 @@ export function VideoPageMain() {
 
   useEffect(() => {
     if (selectedVideo && selectedVideo._id) {
-      fetchVideoDetails(selectedVideo._id);
+      // Only fetch video details if there's no embedIframeUrl
+      if (!selectedVideo.embedIframeUrl) {
+        fetchVideoDetails(selectedVideo._id);
+      } else {
+        // Clear video details since we're using embedded frame
+        setSelectedVideoDetails(null);
+        setFetchingVideoDetails(false);
+      }
     } else {
       setSelectedVideoDetails(null);
     }
@@ -763,6 +779,27 @@ export function VideoPageMain() {
   const selectVideo = (video: Video) => {
     console.log("selectVideo called with:", video.title, "ID:", video._id);
     setSelectedVideo(video);
+
+    // Clear previous video details when selecting a new video
+    setSelectedVideoDetails(null);
+    setFetchingVideoDetails(false);
+
+    // If video has embedIframeUrl, show it immediately without fetching from PeerTube
+    if (video.embedIframeUrl) {
+      console.log(
+        "Video has embedIframeUrl, showing embedded player immediately"
+      );
+      // Don't fetch video details - just show the embedded frame
+      return;
+    }
+
+    // Only fetch video details from PeerTube if there's no embedIframeUrl
+    console.log(
+      "No embedIframeUrl found, fetching video details from PeerTube"
+    );
+    if (video._id) {
+      fetchVideoDetails(video._id);
+    }
 
     // Small delay to ensure the video element is ready before auto-playing
     setTimeout(() => {
@@ -2029,249 +2066,294 @@ export function VideoPageMain() {
               <div className="h-full flex flex-col">
                 {/* ---------trim-------------- */}
 
-                <div className="bg-black rounded-lg aspect-video flex flex-col items-center justify-center relative">
-                  {selectedVideoDetails ? (
-                    <>
-                      {selectedVideoDetails.streamingPlaylists &&
-                      selectedVideoDetails.streamingPlaylists.length > 0 ? (
-                        <>
-                          {/* Trim slider with thumbnails below video */}
-                          {editMode &&
-                            selectedVideoDetails.duration &&
-                            selectedVideoDetails.duration > 0 && (
-                              <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
-                                <TrimSliderWithThumbnails
-                                  duration={selectedVideoDetails.duration}
-                                  videoUrl={
-                                    selectedVideoDetails.streamingPlaylists[0]
-                                      .files[0]?.fileUrl
-                                  }
-                                  videoThumbnail={videoThumbnail}
-                                  videoId={selectedVideo?._id}
-                                  video={selectedVideo as VideoDetails}
-                                  onTrimChange={(start, end) => {
-                                    // Only seek to the position, don't activate trim preview yet
-                                    // Trim preview should only be active when actually trimming
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime = start;
-                                    }
+                {/* Embedded PeerTube Player - Display independently of video loading state */}
+                {selectedVideo?.embedIframeUrl && (
+                  <div className="p-4 border-b mb-4 w-full">
+                    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+                      <iframe
+                        src={selectedVideo.embedIframeUrl}
+                        title={`${
+                          selectedVideo.title || "Video"
+                        } - Embedded Player`}
+                        className="w-full h-full border-0"
+                        allowFullScreen
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
+                      />
+                    </div>
+                  </div>
+                )}
 
-                                    // Store trim values but don't activate preview until trimming starts
-                                    setTrimPreview({
-                                      start,
-                                      end,
-                                      active: false, // Keep false until actual trimming
-                                    });
+                {/* COMMENTED OUT: Main Video Player - Currently disabled to show only embedded frames */}
+                {(() => {
+                  // This function is never executed due to the false condition below
+                  // but keeps the code intact for future use
+                  const shouldShowVideo = false;
+
+                  if (shouldShowVideo) {
+                    return (
+                      <div className="bg-black rounded-lg aspect-video flex flex-col items-center justify-center relative">
+                        {selectedVideoDetails ? (
+                          <>
+                            {selectedVideoDetails.streamingPlaylists &&
+                            selectedVideoDetails.streamingPlaylists.length >
+                              0 ? (
+                              <>
+                                {/* Trim slider with thumbnails below video */}
+                                {editMode &&
+                                  selectedVideoDetails.duration &&
+                                  selectedVideoDetails.duration > 0 && (
+                                    <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
+                                      <TrimSliderWithThumbnails
+                                        duration={selectedVideoDetails.duration}
+                                        videoUrl={
+                                          selectedVideoDetails
+                                            .streamingPlaylists[0].files[0]
+                                            ?.fileUrl
+                                        }
+                                        videoThumbnail={videoThumbnail}
+                                        videoId={selectedVideo?._id}
+                                        video={selectedVideo as VideoDetails}
+                                        onTrimChange={(start, end) => {
+                                          // Only seek to the position, don't activate trim preview yet
+                                          // Trim preview should only be active when actually trimming
+                                          if (videoRef.current) {
+                                            videoRef.current.currentTime =
+                                              start;
+                                          }
+
+                                          // Store trim values but don't activate preview until trimming starts
+                                          setTrimPreview({
+                                            start,
+                                            end,
+                                            active: false, // Keep false until actual trimming
+                                          });
+                                        }}
+                                        onTrimComplete={async (
+                                          blob,
+                                          start,
+                                          end,
+                                          duration
+                                        ) => {
+                                          // Format duration to MM:SS for display
+                                          const formattedDuration =
+                                            formatDuration(duration);
+                                          console.log(
+                                            "🚀 ~ onTrimComplete ~ formatted duration:",
+                                            formattedDuration
+                                          );
+
+                                          setTrimmedVideo({
+                                            blob,
+                                            start,
+                                            end,
+                                            duration,
+                                            videoDuration: formattedDuration, // Add formatted duration
+                                          });
+                                          setTrimPreview({
+                                            start: 0,
+                                            end: 0,
+                                            active: false,
+                                          });
+                                          if (selectedVideo?._id) {
+                                            await handleReplaceVideo(
+                                              selectedVideo._id,
+                                              blob,
+                                              duration
+                                            );
+                                          }
+                                        }}
+                                        onTrimStateChange={(isTrimming) => {
+                                          // console.log(
+                                          //   "onTrimStateChange called with:",
+                                          //   isTrimming
+                                          // );
+                                          setLocalTrimming(isTrimming);
+
+                                          // Show/hide trim toast based on trimming state
+                                          if (isTrimming) {
+                                            toast.loading("Trimming video...", {
+                                              id: trimToastId,
+                                              description:
+                                                "Please wait while your video is being trimmed",
+                                            });
+                                          } else {
+                                            toast.dismiss(trimToastId);
+                                          }
+                                          // console.log(
+                                          //   "localTrimming state updated to:",
+                                          //   isTrimming
+                                          // );
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                <video
+                                  ref={videoRef}
+                                  controls
+                                  autoPlay
+                                  className="w-full h-full rounded-lg"
+                                  poster={videoThumbnail}
+                                  onTimeUpdate={(e) => {
+                                    const currentTime =
+                                      e.currentTarget.currentTime;
+                                    setCurrentPlaybackTime(currentTime);
+
+                                    // If in trim preview mode and we reach the end, loop back to start
+                                    if (
+                                      trimPreview.active &&
+                                      currentTime >= trimPreview.end
+                                    ) {
+                                      e.currentTarget.currentTime =
+                                        trimPreview.start;
+                                    }
                                   }}
-                                  onTrimComplete={async (
-                                    blob,
-                                    start,
-                                    end,
-                                    duration
-                                  ) => {
-                                    // Format duration to MM:SS for display
-                                    const formattedDuration =
-                                      formatDuration(duration);
+                                  onEnded={() => {
                                     console.log(
-                                      "🚀 ~ onTrimComplete ~ formatted duration:",
-                                      formattedDuration
+                                      "Video ended, trimPreview.active:",
+                                      trimPreview.active
                                     );
 
-                                    setTrimmedVideo({
-                                      blob,
-                                      start,
-                                      end,
-                                      duration,
-                                      videoDuration: formattedDuration, // Add formatted duration
-                                    });
-                                    setTrimPreview({
-                                      start: 0,
-                                      end: 0,
-                                      active: false,
-                                    });
-                                    if (selectedVideo?._id) {
-                                      await handleReplaceVideo(
-                                        selectedVideo._id,
-                                        blob,
-                                        duration
+                                    if (trimPreview.active) {
+                                      // Loop the trimmed section
+                                      console.log("Looping trimmed section");
+                                      if (videoRef.current) {
+                                        videoRef.current.currentTime =
+                                          trimPreview.start;
+                                        videoRef.current.play();
+                                      }
+                                    } else if (autoPlayNext) {
+                                      console.log(
+                                        "Attempting to play next video"
+                                      );
+                                      console.log(
+                                        "Current selectedVideo:",
+                                        selectedVideo?._id
+                                      );
+                                      console.log(
+                                        "Available libraryVideos:",
+                                        libraryVideos.map((v) => ({
+                                          id: v._id,
+                                          title: v.title,
+                                        }))
+                                      );
+
+                                      const currentIdx =
+                                        libraryVideos.findIndex(
+                                          (v) => v._id === selectedVideo?._id
+                                        );
+
+                                      console.log(
+                                        "Current video index:",
+                                        currentIdx
+                                      );
+                                      console.log(
+                                        "Total videos:",
+                                        libraryVideos.length
+                                      );
+
+                                      if (
+                                        currentIdx !== -1 &&
+                                        currentIdx < libraryVideos.length - 1
+                                      ) {
+                                        const nextVideo =
+                                          libraryVideos[currentIdx + 1];
+                                        console.log(
+                                          "Playing next video:",
+                                          nextVideo.title,
+                                          "ID:",
+                                          nextVideo._id
+                                        );
+                                        selectVideo(nextVideo);
+                                      } else {
+                                        console.log(
+                                          "Reached end of playlist or video not found in library"
+                                        );
+                                        if (currentIdx === -1) {
+                                          console.log(
+                                            "Current video not found in libraryVideos array"
+                                          );
+                                        } else {
+                                          console.log(
+                                            "This was the last video in the playlist - stopping auto-play"
+                                          );
+                                          toast.info("Reached end of playlist");
+                                        }
+                                      }
+                                    } else {
+                                      console.log(
+                                        "Auto-play next video is disabled"
                                       );
                                     }
                                   }}
-                                  onTrimStateChange={(isTrimming) => {
-                                    // console.log(
-                                    //   "onTrimStateChange called with:",
-                                    //   isTrimming
-                                    // );
-                                    setLocalTrimming(isTrimming);
-
-                                    // Show/hide trim toast based on trimming state
-                                    if (isTrimming) {
-                                      toast.loading("Trimming video...", {
-                                        id: trimToastId,
-                                        description:
-                                          "Please wait while your video is being trimmed",
-                                      });
-                                    } else {
-                                      toast.dismiss(trimToastId);
-                                    }
-                                    // console.log(
-                                    //   "localTrimming state updated to:",
-                                    //   isTrimming
-                                    // );
-                                  }}
                                 />
+                              </>
+                            ) : fetchingVideoDetails ? (
+                              <div className="relative w-full h-full flex flex-col items-center justify-center">
+                                <Loading white size={24} />
+                                <span className="text-white bg-black bg-opacity-50 p-2 rounded mt-2">
+                                  Processing video, please wait...
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="relative w-full h-full">
+                                {videoThumbnail && (
+                                  <img
+                                    src={videoThumbnail}
+                                    alt="Video Thumbnail"
+                                    className="w-full h-full object-contain"
+                                  />
+                                )}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2">
+                                  <span className="text-white bg-black bg-opacity-50 p-2 rounded">
+                                    Video not available for playback
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    onClick={async () => {
+                                      if (
+                                        selectedVideo &&
+                                        selectedVideo._id &&
+                                        selectedSeasonId &&
+                                        selectedGameId
+                                      ) {
+                                        await handleFetchGamesVideos(
+                                          selectedSeasonId,
+                                          selectedGameId
+                                        );
+                                        // Only refetch video details if there's no embedIframeUrl
+                                        if (!selectedVideo.embedIframeUrl) {
+                                          fetchVideoDetails(selectedVideo._id);
+                                        }
+                                      }
+                                    }}
+                                    disabled={
+                                      fetchingVideoDetails ||
+                                      hasActiveUploads() ||
+                                      isTrimming()
+                                    }
+                                  >
+                                    {fetchingVideoDetails ? (
+                                      <Loading size={20} />
+                                    ) : (
+                                      "Refetch"
+                                    )}
+                                  </Button>
+                                </div>
                               </div>
                             )}
-
-                          <video
-                            ref={videoRef}
-                            controls
-                            autoPlay
-                            className="w-full h-full rounded-lg"
-                            poster={videoThumbnail}
-                            onTimeUpdate={(e) => {
-                              const currentTime = e.currentTarget.currentTime;
-                              setCurrentPlaybackTime(currentTime);
-
-                              // If in trim preview mode and we reach the end, loop back to start
-                              if (
-                                trimPreview.active &&
-                                currentTime >= trimPreview.end
-                              ) {
-                                e.currentTarget.currentTime = trimPreview.start;
-                              }
-                            }}
-                            onEnded={() => {
-                              console.log(
-                                "Video ended, trimPreview.active:",
-                                trimPreview.active
-                              );
-
-                              if (trimPreview.active) {
-                                // Loop the trimmed section
-                                console.log("Looping trimmed section");
-                                if (videoRef.current) {
-                                  videoRef.current.currentTime =
-                                    trimPreview.start;
-                                  videoRef.current.play();
-                                }
-                              } else if (autoPlayNext) {
-                                // Auto-play next video (only if autoPlayNext is enabled)
-                                console.log("Attempting to play next video");
-                                console.log(
-                                  "Current selectedVideo:",
-                                  selectedVideo?._id
-                                );
-                                console.log(
-                                  "Available libraryVideos:",
-                                  libraryVideos.map((v) => ({
-                                    id: v._id,
-                                    title: v.title,
-                                  }))
-                                );
-
-                                const currentIdx = libraryVideos.findIndex(
-                                  (v) => v._id === selectedVideo?._id
-                                );
-
-                                console.log("Current video index:", currentIdx);
-                                console.log(
-                                  "Total videos:",
-                                  libraryVideos.length
-                                );
-
-                                if (
-                                  currentIdx !== -1 &&
-                                  currentIdx < libraryVideos.length - 1
-                                ) {
-                                  const nextVideo =
-                                    libraryVideos[currentIdx + 1];
-                                  console.log(
-                                    "Playing next video:",
-                                    nextVideo.title,
-                                    "ID:",
-                                    nextVideo._id
-                                  );
-                                  selectVideo(nextVideo);
-                                } else {
-                                  console.log(
-                                    "Reached end of playlist or video not found in library"
-                                  );
-                                  if (currentIdx === -1) {
-                                    console.log(
-                                      "Current video not found in libraryVideos array"
-                                    );
-                                  } else {
-                                    console.log(
-                                      "This was the last video in the playlist - stopping auto-play"
-                                    );
-                                    toast.info("Reached end of playlist");
-                                  }
-                                }
-                              } else {
-                                console.log("Auto-play next video is disabled");
-                              }
-                            }}
-                          />
-                        </>
-                      ) : fetchingVideoDetails ? (
-                        <div className="relative w-full h-full flex flex-col items-center justify-center">
-                          <Loading white size={24} />
-                          <span className="text-white bg-black bg-opacity-50 p-2 rounded mt-2">
-                            Processing video, please wait...
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="relative w-full h-full">
-                          {videoThumbnail && (
-                            <img
-                              src={videoThumbnail}
-                              alt="Video Thumbnail"
-                              className="w-full h-full object-contain"
-                            />
-                          )}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-2">
-                            <span className="text-white bg-black bg-opacity-50 p-2 rounded">
-                              Video not available for playback
-                            </span>
-                            <Button
-                              variant="outline"
-                              onClick={async () => {
-                                if (
-                                  selectedVideo &&
-                                  selectedVideo._id &&
-                                  selectedSeasonId &&
-                                  selectedGameId
-                                ) {
-                                  await handleFetchGamesVideos(
-                                    selectedSeasonId,
-                                    selectedGameId
-                                  );
-                                  fetchVideoDetails(selectedVideo._id);
-                                }
-                              }}
-                              disabled={
-                                fetchingVideoDetails ||
-                                hasActiveUploads() ||
-                                isTrimming()
-                              }
-                            >
-                              {fetchingVideoDetails ? (
-                                <Loading size={20} />
-                              ) : (
-                                "Refetch"
-                              )}
-                            </Button>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                            <Loading size={20} />
                           </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                      <Loading size={20} />
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center bg-gray-100 rounded-lg">
