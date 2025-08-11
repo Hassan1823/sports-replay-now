@@ -12,6 +12,10 @@ import {
   Heart,
   MessageCircle,
   Download,
+  Video,
+  Circle,
+  CircleCheck,
+  FolderOpen,
 } from "lucide-react";
 
 import Loading from "@/components/shared/loading";
@@ -19,7 +23,7 @@ import Hls from "hls.js";
 import { getVideoDetails } from "@/app/api/peertube/api";
 import Navbar from "@/components/Home/Navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const initialVideoDetails = {
@@ -151,8 +155,6 @@ const ShareVideoPage = () => {
     };
   }, [videoDetails]);
 
-  // Share disabled
-
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -230,20 +232,59 @@ const ShareVideoPage = () => {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Video Section */}
-            <div className="lg:col-span-2">
-              <Card className="overflow-hidden shadow-xl">
-                <div className="relative pt-[56.25%] bg-black">
+      <div className="min-h-screen bg-transparent">
+        <div className="container mx-auto px-2 lg:px-4 py-4">
+          <div className="flex lg:flex-row flex-col justify-start items-start gap-2 lg:h-full h-auto bg-transparent">
+            {/* Left sidebar: Season/Game info */}
+            <div className="lg:w-1/4 lg:h-full w-full h-auto border-r py-4 px-2 bg-transparent lg:overflow-y-auto">
+              <Card
+                className="px-0 py-2 my-1 border border-[#454444]"
+                style={{ backgroundColor: "rgb(133, 133, 133)" }}
+              >
+                <CardContent className="px-3 py-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <CardTitle className="text-sm truncate">
+                          Season/Game
+                        </CardTitle>
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-[0.7rem] text-black/80">
+                        <span className="flex items-center gap-1">
+                          <Video className="w-3 h-3" />1 Video
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {videoDetails.publishedAt
+                            ? new Date(
+                                videoDetails.publishedAt
+                              ).toLocaleDateString()
+                            : "N/A"}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <FolderOpen className="w-3 h-3" />
+                          Sports
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Middle: Video player and chapters */}
+            <div className="flex-1 flex flex-col lg:h-full w-full h-auto">
+              <div className="flex-1 p-0 border-b aspect-video bg-black rounded">
+                <div className="h-full w-full relative">
                   {isVideoLoading && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <img
-                        src={thumbnail}
-                        alt={videoDetails.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
+                      {thumbnail ? (
+                        <img
+                          src={thumbnail}
+                          alt={videoDetails.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      ) : null}
                       <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
@@ -264,153 +305,61 @@ const ShareVideoPage = () => {
                     }}
                   />
                 </div>
+              </div>
 
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                        {videoDetails.name}
-                      </h1>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-4 h-4" />
-                          <span>{formatViewCount(viewCount)} views</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {new Date(
-                              videoDetails.publishedAt
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="w-4 h-4" />
-                          <span>{formatDuration(videoDetails.duration)}</span>
-                        </div>
-                      </div>
+              {/* Chapters grid below player */}
+              <div className="h-auto p-4 overflow-y-auto">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Button
+                    variant="secondary"
+                    className="flex flex-col items-center h-auto p-1"
+                  >
+                    <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-300">
+                      {thumbnail ? (
+                        <img
+                          src={thumbnail}
+                          alt={videoDetails.name}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-xs">No Thumbnail</span>
+                      )}
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-3 mb-6">
-                    <Button
-                      variant={isLiked ? "default" : "outline"}
-                      onClick={() => setIsLiked(!isLiked)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Heart
-                        className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`}
-                      />
-                      <span>{isLiked ? "Liked" : "Like"}</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex items-center space-x-2"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      <span>Comment</span>
-                    </Button>
-                    {/* Sharing disabled */}
-                    <Button
-                      variant="outline"
-                      className="flex items-center space-x-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download</span>
-                    </Button>
-                  </div>
-
-                  {/* Video Description */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {videoDetails.account.displayName}
-                        </p>
-                        <p className="text-sm text-gray-600">Content Creator</p>
-                      </div>
-                    </div>
-                    <p className="text-gray-700 leading-relaxed">
-                      {videoDetails.description}
-                    </p>
-                  </div>
-
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Sports</Badge>
-                    <Badge variant="secondary">Replay</Badge>
-                    <Badge variant="secondary">Highlights</Badge>
-                    <Badge variant="secondary">Action</Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                    <span className="text-sm font-medium truncate w-full text-center">
+                      {videoDetails.name || "Untitled"}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatDuration(videoDetails.duration)}
+                    </span>
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Quick Stats */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Video Stats
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Views</span>
-                      <span className="font-medium">
-                        {formatViewCount(viewCount)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration</span>
-                      <span className="font-medium">
+            {/* Right sidebar: Video name */}
+            <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
+              <Card className="border px-2 bg-[#858585] gap-1">
+                <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
+                  Video
+                </h2>
+                <CardContent className="p-0">
+                  <ol className="list-none space-y-1">
+                    <li className="px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 cursor-pointer">
+                      <div className="flex items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          <CircleCheck className="w-4 h-4 text-black" />
+                        </div>
+                        <span className="truncate block">
+                          {videoDetails.name || "no title"}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-700">
                         {formatDuration(videoDetails.duration)}
                       </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Quality</span>
-                      <span className="font-medium">
-                        {videoDetails.streamingPlaylists[0].quality || "HD"}
-                      </span>
-                    </div>
-                  </div>
+                    </li>
+                  </ol>
                 </CardContent>
               </Card>
-
-              {/* Related Videos */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    More Videos
-                  </h3>
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((item) => (
-                      <div
-                        key={item}
-                        className="flex space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                      >
-                        <div className="w-20 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <Play className="w-4 h-4 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            Related Video {item}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            2.5K views • 2 days ago
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Share section removed */}
             </div>
           </div>
         </div>
