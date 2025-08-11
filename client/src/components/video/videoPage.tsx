@@ -91,6 +91,9 @@ export function VideoPageMain() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [editMode, setEditMode] = useState(false);
   const [autoPlayNext, setAutoPlayNext] = useState(true);
+  const [autoPlayTimer, setAutoPlayTimer] = useState<NodeJS.Timeout | null>(
+    null
+  );
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [librarySeasons, setLibrarySeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
@@ -463,6 +466,15 @@ export function VideoPageMain() {
     }
   }, [user]);
 
+  // Cleanup auto-play timer when component unmounts
+  useEffect(() => {
+    return () => {
+      if (autoPlayTimer) {
+        clearTimeout(autoPlayTimer);
+      }
+    };
+  }, [autoPlayTimer]);
+
   const fetchSeasons = async () => {
     if (!user?._id) return;
 
@@ -784,12 +796,21 @@ export function VideoPageMain() {
     setSelectedVideoDetails(null);
     setFetchingVideoDetails(false);
 
+    // Clear any existing auto-play timer
+    if (autoPlayTimer) {
+      clearTimeout(autoPlayTimer);
+      setAutoPlayTimer(null);
+    }
+
     // If video has embedIframeUrl, show it immediately without fetching from PeerTube
     if (video.embedIframeUrl) {
       console.log(
         "Video has embedIframeUrl, showing embedded player immediately"
       );
-      // Don't fetch video details - just show the embedded frame
+      // Start video monitoring for auto-play
+      if (autoPlayNext) {
+        startVideoMonitoring();
+      }
       return;
     }
 
@@ -813,6 +834,55 @@ export function VideoPageMain() {
         });
       }
     }, 100);
+  };
+
+  // Simple function to play the next video
+  const playNextVideo = () => {
+    if (!selectedVideo || !libraryVideos.length) return;
+
+    const currentIdx = libraryVideos.findIndex(
+      (v) => v._id === selectedVideo._id
+    );
+
+    if (currentIdx !== -1 && currentIdx < libraryVideos.length - 1) {
+      const nextVideo = libraryVideos[currentIdx + 1];
+      console.log("Auto-playing next video:", nextVideo.title);
+      selectVideo(nextVideo);
+    } else if (libraryVideos.length > 0) {
+      // Loop back to first video
+      console.log("Looping back to first video");
+      selectVideo(libraryVideos[0]);
+    }
+  };
+
+  // Function to monitor embedded video completion and auto-play next
+  const startVideoMonitoring = () => {
+    if (!autoPlayNext || !selectedVideo) return;
+
+    // Clear any existing monitoring
+    if (autoPlayTimer) {
+      clearTimeout(autoPlayTimer);
+      setAutoPlayTimer(null);
+    }
+
+    // For immediate progression, we'll use a very short timer
+    // This is the most reliable way to ensure videos progress quickly
+    // You can adjust this value based on your typical video lengths
+
+    // Set this to a very short duration for immediate progression
+    // Adjust based on your actual video lengths:
+    // - 10 seconds: 10000
+    // - 15 seconds: 15000
+    // - 20 seconds: 20000
+    // - 30 seconds: 30000
+    const videoDuration = 15000; // 15 seconds - adjust this based on your video lengths
+
+    const timer = setTimeout(() => {
+      console.log("Video duration timer completed, moving to next video");
+      playNextVideo();
+    }, videoDuration);
+
+    setAutoPlayTimer(timer);
   };
 
   const handleDeleteVideo = async (video: Video) => {
@@ -2079,6 +2149,21 @@ export function VideoPageMain() {
                         allowFullScreen
                         allow="autoplay; fullscreen; picture-in-picture"
                         sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"
+                        onLoad={() => {
+                          // Start monitoring the iframe for video completion
+                          if (autoPlayNext) {
+                            startVideoMonitoring();
+                          }
+                        }}
+                        onError={() => {
+                          // If iframe fails to load, move to next video immediately
+                          console.log(
+                            "Iframe failed to load, moving to next video"
+                          );
+                          if (autoPlayNext) {
+                            playNextVideo();
+                          }
+                        }}
                       />
                     </div>
                   </div>
