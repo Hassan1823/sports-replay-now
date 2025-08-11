@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Calendar,
-  Clock,
-  Eye,
-  FolderOpen,
-  Heart,
-  Play,
-  Video,
-  Circle,
-  CircleCheck,
-} from "lucide-react";
+import { Calendar, Circle, CircleCheck, FolderOpen, Video } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +11,6 @@ import {
   getVideosForGame,
 } from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import Hls from "hls.js";

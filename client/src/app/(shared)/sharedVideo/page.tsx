@@ -1,30 +1,16 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import { Calendar, CircleCheck, FolderOpen, Video } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  Play,
-  Clock,
-  Calendar,
-  User,
-  Eye,
-  Heart,
-  MessageCircle,
-  Download,
-  Video,
-  Circle,
-  CircleCheck,
-  FolderOpen,
-} from "lucide-react";
 
-import Loading from "@/components/shared/loading";
-import Hls from "hls.js";
 import { getVideoDetails } from "@/app/api/peertube/api";
 import Navbar from "@/components/Home/Navbar";
+import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import Hls from "hls.js";
 
 const initialVideoDetails = {
   id: "",
