@@ -489,51 +489,103 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
             }}
           >
             {thumbnails.length === THUMB_COUNT
-              ? thumbnails.map((thumb, idx) => (
-                  <Image
-                    key={idx}
-                    src={thumb || videoThumbnail || ""}
-                    alt={`thumb-slider-${idx}`}
-                    width={thumbSize.width}
-                    height={thumbSize.height * 0.6}
-                    className="border-e-2 border-[#878510] object-cover"
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      width: thumbSize.width,
-                      height: thumbSize.height * 0.6,
-                      opacity:
-                        start <= (idx * duration) / (THUMB_COUNT - 1) &&
-                        end >= (idx * duration) / (THUMB_COUNT - 1)
-                          ? 1
-                          : 0.5,
-                      zIndex: 1,
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                    }}
-                    draggable={false}
-                  />
-                ))
-              : Array.from({ length: THUMB_COUNT }).map((_, i) => (
-                  <Image
-                    key={i}
-                    src={videoThumbnail || ""}
-                    alt={`Video thumbnail fallback ${i + 1}`}
-                    width={Math.floor(100 / THUMB_COUNT)}
-                    height={THUMB_HEIGHT * 0.6}
-                    style={{
-                      width: `calc(100% / ${THUMB_COUNT})`,
-                      height: THUMB_HEIGHT * 0.6,
-                      objectFit: "cover",
-                      borderRadius: 4,
-                      opacity: 1,
-                      zIndex: 1,
-                      pointerEvents: "none",
-                      userSelect: "none",
-                    }}
-                    draggable={false}
-                  />
-                ))}
+              ? thumbnails.map((thumb, idx) => {
+                  const imageSrc = thumb || videoThumbnail;
+                  // Only render image if we have a valid source
+                  if (!imageSrc) {
+                    return (
+                      <div
+                        key={idx}
+                        className="border-e-2 border-[#878510] bg-gray-300 flex items-center justify-center"
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          width: thumbSize.width,
+                          height: thumbSize.height * 0.6,
+                          opacity:
+                            start <= (idx * duration) / (THUMB_COUNT - 1) &&
+                            end >= (idx * duration) / (THUMB_COUNT - 1)
+                              ? 1
+                              : 0.5,
+                          zIndex: 1,
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                        }}
+                      >
+                        <span className="text-xs text-gray-600">No thumb</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Image
+                      key={idx}
+                      src={imageSrc}
+                      alt={`thumb-slider-${idx}`}
+                      width={thumbSize.width}
+                      height={thumbSize.height * 0.6}
+                      className="border-e-2 border-[#878510] object-cover"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        width: thumbSize.width,
+                        height: thumbSize.height * 0.6,
+                        opacity:
+                          start <= (idx * duration) / (THUMB_COUNT - 1) &&
+                          end >= (idx * duration) / (THUMB_COUNT - 1)
+                            ? 1
+                            : 0.5,
+                        zIndex: 1,
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                      }}
+                      draggable={false}
+                    />
+                  );
+                })
+              : Array.from({ length: THUMB_COUNT }).map((_, i) => {
+                  // Only render image if we have a valid thumbnail
+                  if (!videoThumbnail) {
+                    return (
+                      <div
+                        key={i}
+                        className="bg-gray-300 flex items-center justify-center"
+                        style={{
+                          width: `calc(100% / ${THUMB_COUNT})`,
+                          height: THUMB_HEIGHT * 0.6,
+                          borderRadius: 4,
+                          opacity: 1,
+                          zIndex: 1,
+                          pointerEvents: "none",
+                          userSelect: "none",
+                        }}
+                      >
+                        <span className="text-xs text-gray-600">No thumb</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Image
+                      key={i}
+                      src={videoThumbnail}
+                      alt={`Video thumbnail fallback ${i + 1}`}
+                      width={Math.floor(100 / THUMB_COUNT)}
+                      height={THUMB_HEIGHT * 0.6}
+                      style={{
+                        width: `calc(100% / ${THUMB_COUNT})`,
+                        height: THUMB_HEIGHT * 0.6,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        opacity: 1,
+                        zIndex: 1,
+                        pointerEvents: "none",
+                        userSelect: "none",
+                      }}
+                      draggable={false}
+                    />
+                  );
+                })}
           </div>
           {/* Handles */}
           {/* Start handle */}
