@@ -645,14 +645,36 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
             onMouseDown={handleEndDrag}
             onTouchStart={handleEndDrag}
           />
+          {/* Non-highlighted area before start slider (orange) */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 bg-blue-500/50 opacity-100 pointer-events-none"
+            style={{
+              left: 0,
+              width: `${(start / duration) * 100}%`,
+              zIndex: 1,
+              // borderRadius: 8,
+              height: thumbSize.height * 0.6, // match the thumbnail height
+            }}
+          />
           {/* Highlighted selection */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 bg-blue-200/50 opacity-100 pointer-events-none"
+            className="absolute top-1/2 -translate-y-1/2 bg-transparent opacity-100 pointer-events-none"
             style={{
               left: `${(start / duration) * 100}%`,
               width: `${((end - start) / duration) * 100}%`,
               zIndex: 1,
-              borderRadius: 8,
+              // borderRadius: 8,
+              height: thumbSize.height * 0.6, // match the thumbnail height
+            }}
+          />
+          {/* Non-highlighted area after end slider (blue) */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 bg-blue-500/50 opacity-100 pointer-events-none"
+            style={{
+              left: `${(end / duration) * 100}%`,
+              width: `${((duration - end) / duration) * 100}%`,
+              zIndex: 1,
+              // borderRadius: 8,
               height: thumbSize.height * 0.6, // match the thumbnail height
             }}
           />
