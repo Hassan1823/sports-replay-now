@@ -647,7 +647,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           />
           {/* Highlighted selection */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 bg-blue-200/50 opacity-30 pointer-events-none"
+            className="absolute top-1/2 -translate-y-1/2 bg-blue-200/50 opacity-100 pointer-events-none"
             style={{
               left: `${(start / duration) * 100}%`,
               width: `${((end - start) / duration) * 100}%`,

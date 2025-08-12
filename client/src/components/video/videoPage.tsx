@@ -2038,7 +2038,7 @@ export function VideoPageMain() {
                               selectedVideoDetails.duration > 0) ||
                               (videoRef.current?.duration &&
                                 videoRef.current.duration > 0)) && (
-                              <div className="absolute top-0 left-0 right-0 z-50 w-full flex flex-col items-center px-2 py-2 bg-black/80">
+                              <div className="absolute top-0 left-0 right-0 z-50 w-full flex flex-col items-center px-0 py-0 bg-black/50 rounded-t-md">
                                 <TrimSliderWithThumbnails
                                   duration={
                                     selectedVideoDetails?.duration ||
