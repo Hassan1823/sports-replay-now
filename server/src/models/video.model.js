@@ -36,6 +36,11 @@ const videoSchema = new mongoose.Schema(
       required: false,
       default: "",
     },
+    fileUrl: {
+      type: String,
+      required: false,
+      default: "",
+    },
     peertubeChannelId: {
       type: Number,
       required: true,
@@ -45,7 +50,11 @@ const videoSchema = new mongoose.Schema(
       required: true,
     },
     description: String,
-    filePath: String,
+    filePath: {
+      type: String,
+      required: false,
+      default: "",
+    },
     duration: Number,
     thumbnailPath: String,
     privacy: {

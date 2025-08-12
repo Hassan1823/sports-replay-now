@@ -40,6 +40,7 @@ const muteVideoFile = async (inputPath) => {
 
 // * upload single video to a game folder
 export const uploadVideoToGame = asyncHandler(async (req, res) => {
+  console.log("⚒️  uploading videosssss ........");
   const { gameId } = req.params;
   const { name, description = "", privacy = "1", mute } = req.body;
   const videoFile = req.file;
@@ -210,6 +211,18 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       peertubeVideoDetails = uploadResponse.data.video; // fallback
     }
 
+    // Extract fileUrl from the files array (get the highest quality version)
+    let fileUrl = "";
+    if (peertubeVideoDetails.files && peertubeVideoDetails.files.length > 0) {
+      // Sort by resolution (height) to get the highest quality
+      const sortedFiles = peertubeVideoDetails.files.sort(
+        (a, b) => b.height - a.height
+      );
+      fileUrl = sortedFiles[0].fileUrl || "";
+    }
+
+    console.log("🚀 ~ fileUrl:", fileUrl);
+
     // Compose full URLs for previewPath and thumbnailPath
     const peertubeBaseUrl =
       process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
@@ -233,7 +246,10 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       peertubeChannelId: peertubeAccount.peertubeChannelId,
       title: name,
       description,
-      filePath: uploadResponse.data.video.url,
+      fileUrl:
+        fileUrl ||
+        peertubeVideoDetails.files[0].fileUrl ||
+        uploadResponse.data.video.url, // Use fileUrl if available
       duration: uploadResponse.data.video.duration,
       videoThumbnail: thumbnailPath || previewPath || "",
       privacy,
@@ -243,6 +259,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       uploadStatus: "published",
       muteVideo: muteVideo,
       videoDuration: videoDuration, // <-- Added field
+      fileUrl: fileUrl, // <-- Added field
     });
 
     // Add video to game
@@ -447,6 +464,16 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
       peertubeVideoDetails = uploadResponse.data.video; // fallback
     }
 
+    // Extract fileUrl from the files array (get the highest quality version)
+    let fileUrl = "";
+    if (peertubeVideoDetails.files && peertubeVideoDetails.files.length > 0) {
+      // Sort by resolution (height) to get the highest quality
+      const sortedFiles = peertubeVideoDetails.files.sort(
+        (a, b) => b.height - a.height
+      );
+      fileUrl = sortedFiles[0].fileUrl || "";
+    }
+
     // Compose full URLs for previewPath and thumbnailPath
     const peertubeBaseUrl =
       process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
@@ -473,6 +500,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
         videoDuration: duration || videoDuration || 0, // Use new duration or keep existing
         // Keep the original muteVideo status
         $setOnInsert: { muteVideo: existingVideo.muteVideo },
+        fileUrl: fileUrl, // <-- Added field
       },
       { new: true }
     );
