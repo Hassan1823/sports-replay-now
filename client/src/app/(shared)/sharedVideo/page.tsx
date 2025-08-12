@@ -21,12 +21,7 @@ const initialVideoDetails = {
   account: {
     displayName: "",
   },
-  streamingPlaylists: [
-    {
-      quality: "",
-      playlistUrl: "",
-    },
-  ],
+  fileUrl: "",
   thumbnailPath: "",
 };
 
@@ -102,36 +97,48 @@ const ShareVideoPage = () => {
     const video = videoRef.current;
     let hls: Hls;
 
-    if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(videoDetails.streamingPlaylists[0].playlistUrl);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setIsVideoLoading(false);
-      });
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              toast.error("Network error occurred");
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              toast.error("Media error occurred");
-              hls.recoverMediaError();
-              break;
-            default:
-              toast.error("Failed to load video");
-              break;
-          }
+    if (videoDetails.fileUrl) {
+      const videoSrc = videoDetails.fileUrl;
+
+      if (videoSrc.endsWith(".m3u8")) {
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(videoSrc);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setIsVideoLoading(false);
+          });
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  toast.error("Network error occurred");
+                  hls.startLoad();
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  toast.error("Media error occurred");
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  toast.error("Failed to load video");
+                  break;
+              }
+            }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          // For Safari
+          video.src = videoSrc;
+          video.addEventListener("loadedmetadata", () => {
+            setIsVideoLoading(false);
+          });
         }
-      });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // For Safari
-      video.src = videoDetails.streamingPlaylists[0].playlistUrl;
-      video.addEventListener("loadedmetadata", () => {
-        setIsVideoLoading(false);
-      });
+      } else {
+        // Direct video file
+        video.src = videoSrc;
+        video.addEventListener("loadedmetadata", () => {
+          setIsVideoLoading(false);
+        });
+      }
     }
 
     return () => {

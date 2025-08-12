@@ -101,7 +101,7 @@ export function VideoPageMain() {
     muteVideo?: boolean;
     category?: { label?: string };
     thumbnailPath?: string;
-    streamingPlaylists?: { files: { fileUrl: string }[] }[];
+    fileUrl?: string;
     [key: string]: unknown; // Add more fields as needed
   };
 
@@ -347,10 +347,7 @@ export function VideoPageMain() {
               : ""
           );
 
-          if (
-            videoDetails.streamingPlaylists &&
-            videoDetails.streamingPlaylists.length > 0
-          ) {
+          if (videoDetails.fileUrl) {
             setFetchingVideoDetails(false);
             // If seekTime was provided, restore playback position
             if (seekTime !== undefined && videoRef.current) {
@@ -389,10 +386,7 @@ export function VideoPageMain() {
               }${videoDetails.thumbnailPath}`
             : ""
         );
-        if (
-          !videoDetails.streamingPlaylists ||
-          videoDetails.streamingPlaylists.length === 0
-        ) {
+        if (!videoDetails.fileUrl) {
           // Start polling if not ready
           await pollVideoReady(videoId);
         } else {
@@ -757,6 +751,19 @@ export function VideoPageMain() {
   };
 
   const toggleEditMode = () => {
+    console.log("🚀 ~ toggleEditMode ~ editMode:", editMode);
+    console.log(
+      "🚀 ~ toggleEditMode ~ selectedVideoDetails:",
+      selectedVideoDetails
+    );
+    console.log(
+      "🚀 ~ toggleEditMode ~ selectedVideoDetails.duration:",
+      selectedVideoDetails?.duration
+    );
+    console.log(
+      "🚀 ~ toggleEditMode ~ videoRef.current?.duration:",
+      videoRef.current?.duration
+    );
     setEditMode(!editMode);
   };
 
@@ -1157,12 +1164,12 @@ export function VideoPageMain() {
   useEffect(() => {
     if (
       selectedVideoDetails &&
-      selectedVideoDetails.streamingPlaylists &&
-      selectedVideoDetails.streamingPlaylists.length > 0 &&
+      selectedVideoDetails.fileUrl &&
       videoRef.current
     ) {
-      const videoSrc =
-        selectedVideoDetails.streamingPlaylists[0].files[0]?.fileUrl;
+      const videoSrc = selectedVideoDetails.fileUrl;
+
+      // Handle HLS streams (.m3u8 files)
       if (videoSrc && videoSrc.endsWith(".m3u8")) {
         if (Hls.isSupported()) {
           if (hlsInstance.current) {
@@ -1180,13 +1187,16 @@ export function VideoPageMain() {
         ) {
           videoRef.current.src = videoSrc;
         }
-      } else if (videoSrc) {
+      }
+      // Handle direct video files (mp4, webm, etc.)
+      else if (videoSrc) {
         if (hlsInstance.current) {
           hlsInstance.current.destroy();
           hlsInstance.current = null;
         }
         videoRef.current.src = videoSrc;
       }
+
       videoRef.current.muted = selectedVideoDetails.muteVideo || false;
     } else {
       if (hlsInstance.current) {
@@ -1197,6 +1207,7 @@ export function VideoPageMain() {
         videoRef.current.src = "";
       }
     }
+
     // Cleanup on unmount
     return () => {
       if (hlsInstance.current) {
@@ -2032,96 +2043,106 @@ export function VideoPageMain() {
                 <div className="bg-black rounded-lg aspect-video flex flex-col items-center justify-center relative">
                   {selectedVideoDetails ? (
                     <>
-                      {selectedVideoDetails.streamingPlaylists &&
-                      selectedVideoDetails.streamingPlaylists.length > 0 ? (
+                      {selectedVideoDetails.fileUrl ? (
                         <>
-                          {/* Trim slider with thumbnails below video */}
-                          {editMode &&
-                            selectedVideoDetails.duration &&
-                            selectedVideoDetails.duration > 0 && (
-                              <div className="w-full z-50 flex flex-col items-center mt-0 px-0">
-                                <TrimSliderWithThumbnails
-                                  duration={selectedVideoDetails.duration}
-                                  videoUrl={
-                                    selectedVideoDetails.streamingPlaylists[0]
-                                      .files[0]?.fileUrl
+                          {/* Trim slider with thumbnails positioned on top of video */}
+                          {(() => {
+                            const shouldShow =
+                              editMode &&
+                              ((selectedVideoDetails?.duration &&
+                                selectedVideoDetails.duration > 0) ||
+                                (videoRef.current?.duration &&
+                                  videoRef.current.duration > 0));
+                            console.log(
+                              "🚀 ~ Should show trimmer:",
+                              shouldShow
+                            );
+                            return shouldShow;
+                          })() && (
+                            <div className="absolute top-0 left-0 right-0 z-50 w-full flex flex-col items-center px-2 py-2 bg-black/80">
+                              <TrimSliderWithThumbnails
+                                duration={
+                                  selectedVideoDetails?.duration ||
+                                  videoRef.current?.duration ||
+                                  0
+                                }
+                                videoUrl={selectedVideoDetails.fileUrl || ""}
+                                videoThumbnail={videoThumbnail}
+                                videoId={selectedVideo?._id}
+                                video={selectedVideo as VideoDetails}
+                                onTrimChange={(start, end) => {
+                                  // Only seek to the position, don't activate trim preview yet
+                                  // Trim preview should only be active when actually trimming
+                                  if (videoRef.current) {
+                                    videoRef.current.currentTime = start;
                                   }
-                                  videoThumbnail={videoThumbnail}
-                                  videoId={selectedVideo?._id}
-                                  video={selectedVideo as VideoDetails}
-                                  onTrimChange={(start, end) => {
-                                    // Only seek to the position, don't activate trim preview yet
-                                    // Trim preview should only be active when actually trimming
-                                    if (videoRef.current) {
-                                      videoRef.current.currentTime = start;
-                                    }
 
-                                    // Store trim values but don't activate preview until trimming starts
-                                    setTrimPreview({
-                                      start,
-                                      end,
-                                      active: false, // Keep false until actual trimming
-                                    });
-                                  }}
-                                  onTrimComplete={async (
+                                  // Store trim values but don't activate preview until trimming starts
+                                  setTrimPreview({
+                                    start,
+                                    end,
+                                    active: false, // Keep false until actual trimming
+                                  });
+                                }}
+                                onTrimComplete={async (
+                                  blob,
+                                  start,
+                                  end,
+                                  duration
+                                ) => {
+                                  // Format duration to MM:SS for display
+                                  const formattedDuration =
+                                    formatDuration(duration);
+                                  console.log(
+                                    "🚀 ~ onTrimComplete ~ formatted duration:",
+                                    formattedDuration
+                                  );
+
+                                  setTrimmedVideo({
                                     blob,
                                     start,
                                     end,
-                                    duration
-                                  ) => {
-                                    // Format duration to MM:SS for display
-                                    const formattedDuration =
-                                      formatDuration(duration);
-                                    console.log(
-                                      "🚀 ~ onTrimComplete ~ formatted duration:",
-                                      formattedDuration
-                                    );
-
-                                    setTrimmedVideo({
+                                    duration,
+                                    videoDuration: formattedDuration, // Add formatted duration
+                                  });
+                                  setTrimPreview({
+                                    start: 0,
+                                    end: 0,
+                                    active: false,
+                                  });
+                                  if (selectedVideo?._id) {
+                                    await handleReplaceVideo(
+                                      selectedVideo._id,
                                       blob,
-                                      start,
-                                      end,
-                                      duration,
-                                      videoDuration: formattedDuration, // Add formatted duration
-                                    });
-                                    setTrimPreview({
-                                      start: 0,
-                                      end: 0,
-                                      active: false,
-                                    });
-                                    if (selectedVideo?._id) {
-                                      await handleReplaceVideo(
-                                        selectedVideo._id,
-                                        blob,
-                                        duration
-                                      );
-                                    }
-                                  }}
-                                  onTrimStateChange={(isTrimming) => {
-                                    // console.log(
-                                    //   "onTrimStateChange called with:",
-                                    //   isTrimming
-                                    // );
-                                    setLocalTrimming(isTrimming);
+                                      duration
+                                    );
+                                  }
+                                }}
+                                onTrimStateChange={(isTrimming) => {
+                                  // console.log(
+                                  //   "onTrimStateChange called with:",
+                                  //   isTrimming
+                                  // );
+                                  setLocalTrimming(isTrimming);
 
-                                    // Show/hide trim toast based on trimming state
-                                    if (isTrimming) {
-                                      toast.loading("Trimming video...", {
-                                        id: trimToastId,
-                                        description:
-                                          "Please wait while your video is being trimmed",
-                                      });
-                                    } else {
-                                      toast.dismiss(trimToastId);
-                                    }
-                                    // console.log(
-                                    //   "localTrimming state updated to:",
-                                    //   isTrimming
-                                    // );
-                                  }}
-                                />
-                              </div>
-                            )}
+                                  // Show/hide trim toast based on trimming state
+                                  if (isTrimming) {
+                                    toast.loading("Trimming video...", {
+                                      id: trimToastId,
+                                      description:
+                                        "Please wait while your video is being trimmed",
+                                    });
+                                  } else {
+                                    toast.dismiss(trimToastId);
+                                  }
+                                  // console.log(
+                                  //   "localTrimming state updated to:",
+                                  //   isTrimming
+                                  // );
+                                }}
+                              />
+                            </div>
+                          )}
 
                           <video
                             ref={videoRef}

@@ -62,7 +62,7 @@ type VideoDetails = {
   muteVideo?: boolean;
   category?: { label?: string };
   thumbnailPath?: string;
-  streamingPlaylists?: { files: { fileUrl: string }[] }[];
+  fileUrl?: string;
   [key: string]: unknown;
 };
 
@@ -301,12 +301,10 @@ const SeasonComponent = () => {
   useEffect(() => {
     if (
       selectedVideoDetails &&
-      selectedVideoDetails.streamingPlaylists &&
-      selectedVideoDetails.streamingPlaylists.length > 0 &&
+      selectedVideoDetails.fileUrl &&
       videoRef.current
     ) {
-      const videoSrc =
-        selectedVideoDetails.streamingPlaylists[0].files[0]?.fileUrl;
+      const videoSrc = selectedVideoDetails.fileUrl;
 
       if (videoSrc && videoSrc.endsWith(".m3u8")) {
         if (Hls.isSupported()) {

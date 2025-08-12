@@ -11,7 +11,7 @@ interface VideoDetails {
   muteVideo?: boolean;
   category?: { label?: string };
   thumbnailPath?: string;
-  streamingPlaylists?: { files: { fileUrl: string }[] }[];
+  fileUrl?: string;
   [key: string]: unknown;
 }
 

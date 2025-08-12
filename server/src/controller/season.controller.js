@@ -246,10 +246,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       peertubeChannelId: peertubeAccount.peertubeChannelId,
       title: name,
       description,
-      fileUrl:
-        fileUrl ||
-        peertubeVideoDetails.files[0].fileUrl ||
-        uploadResponse.data.video.url, // Use fileUrl if available
+      fileUrl: fileUrl,
       duration: uploadResponse.data.video.duration,
       videoThumbnail: thumbnailPath || previewPath || "",
       privacy,
@@ -258,8 +255,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
       tags: req.body.tags ? req.body.tags.split(",").map((t) => t.trim()) : [],
       uploadStatus: "published",
       muteVideo: muteVideo,
-      videoDuration: videoDuration, // <-- Added field
-      fileUrl: fileUrl, // <-- Added field
+      videoDuration: videoDuration,
     });
 
     // Add video to game
@@ -1128,7 +1124,7 @@ export const getGameDetails = asyncHandler(async (req, res) => {
   }
 });
 
-// * Get video details by videoId (from DB and PeerTube)
+// * Get video details by videoId (from DB)
 export const getVideoDetails = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   if (!videoId) {
@@ -1138,36 +1134,28 @@ export const getVideoDetails = asyncHandler(async (req, res) => {
     });
   }
 
-  // Find video in DB to get PeerTube video ID
-  const videoDoc = await Video.findById(videoId);
-  if (!videoDoc || !videoDoc.peertubeVideoId) {
-    return res.status(404).json({
-      success: false,
-      message: "Video not found or missing PeerTube ID",
-    });
-  }
-
-  const token = await getAccessToken();
   try {
-    const response = await axios.get(
-      `${process.env.PEERTUBE_INSTANCE_URL}/api/v1/videos/${videoDoc.peertubeVideoId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    // Find video in DB and populate related data
+    const videoDoc = await Video.findById(videoId);
+    if (!videoDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Return video data from database
     return res.status(200).json({
       success: true,
-      data: response.data,
-      message: "Video details fetched from PeerTube",
+      data: videoDoc,
+      message: "Video details fetched from database",
     });
   } catch (error) {
     console.log("🚀 ~ getVideoDetails ~ error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch video details from PeerTube",
-      details: error.response?.data || error.message,
+      message: "Failed to fetch video details from database",
+      details: error.message,
     });
   }
 });
