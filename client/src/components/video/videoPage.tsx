@@ -2403,7 +2403,11 @@ export function VideoPageMain() {
               className="text-xs"
               onClick={() => setShowMenu(!showMenu)}
               disabled={
-                hasActiveUploads() || isTrimming() || deletingVideoId !== null
+                hasActiveUploads() ||
+                isTrimming() ||
+                deletingVideoId !== null ||
+                replacingVideo?.status === "uploading" ||
+                localTrimming
               }
             >
               <MenuIcon />
@@ -2441,13 +2445,24 @@ export function VideoPageMain() {
                         <li
                           key={video._id}
                           className={`px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 ${
-                            isTrimming() || deletingVideoId === video._id
+                            isTrimming() ||
+                            deletingVideoId === video._id ||
+                            (replacingVideo?.videoId === video._id &&
+                              replacingVideo?.status === "uploading") ||
+                            (localTrimming && selectedVideo?._id === video._id)
                               ? "cursor-not-allowed opacity-50"
                               : "cursor-pointer"
                           }`}
                           onClick={() =>
                             !isTrimming() &&
                             deletingVideoId !== video._id &&
+                            !(
+                              replacingVideo?.videoId === video._id &&
+                              replacingVideo?.status === "uploading"
+                            ) &&
+                            !(
+                              localTrimming && selectedVideo?._id === video._id
+                            ) &&
                             selectVideo(video)
                           }
                         >
@@ -2462,7 +2477,12 @@ export function VideoPageMain() {
                                   handleDeleteVideo(video);
                                 }}
                                 disabled={
-                                  isTrimming() || deletingVideoId === video._id
+                                  isTrimming() ||
+                                  deletingVideoId === video._id ||
+                                  (replacingVideo?.videoId === video._id &&
+                                    replacingVideo?.status === "uploading") ||
+                                  (localTrimming &&
+                                    selectedVideo?._id === video._id)
                                 }
                               >
                                 {deletingVideoId === video._id ? (
@@ -2483,6 +2503,14 @@ export function VideoPageMain() {
                                   {/* <Loading size={12} /> */}
                                   Deleting...
                                 </span>
+                              ) : (localTrimming &&
+                                  selectedVideo?._id === video._id) ||
+                                (replacingVideo?.videoId === video._id &&
+                                  replacingVideo?.status === "uploading") ? (
+                                <span className="flex items-center gap-2">
+                                  {/* <Loading size={12} /> */}
+                                  Trimming...
+                                </span>
                               ) : (
                                 video.title || "no title"
                               )}
@@ -2500,6 +2528,10 @@ export function VideoPageMain() {
                             disabled={
                               isTrimming() ||
                               deletingVideoId === video._id ||
+                              (replacingVideo?.videoId === video._id &&
+                                replacingVideo?.status === "uploading") ||
+                              (localTrimming &&
+                                selectedVideo?._id === video._id) ||
                               hasActiveUploads()
                             }
                           >
