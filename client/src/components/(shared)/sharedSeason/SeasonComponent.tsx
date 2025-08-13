@@ -1,6 +1,13 @@
 "use client";
 
-import { Calendar, Circle, CircleCheck, FolderOpen, Video } from "lucide-react";
+import {
+  Calendar,
+  Circle,
+  CircleCheck,
+  FolderOpen,
+  Video,
+  Download,
+} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,7 +20,14 @@ import {
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Hls from "hls.js";
+import { useAuth } from "@/context/AuthContext";
 
 type Video = {
   description: string;
@@ -70,6 +84,7 @@ const SeasonComponent = () => {
   const searchParams = useSearchParams();
   const shareSeasonId = searchParams.get("id");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [season, setSeason] = useState<Season | null>(null);
@@ -84,6 +99,7 @@ const SeasonComponent = () => {
   const [videoThumbnail, setVideoThumbnail] = useState("");
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [showAllVideos, setShowAllVideos] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -424,6 +440,14 @@ const SeasonComponent = () => {
     };
   }, [selectedVideoDetails]);
 
+  const handleDownloadClick = () => {
+    setShowDownloadModal(true);
+  };
+
+  const handleSignupRedirect = () => {
+    window.location.href = "/login";
+  };
+
   if (isLoading) {
     return <Loading fullScreen />;
   }
@@ -636,6 +660,21 @@ const SeasonComponent = () => {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Download Button - Only show if user is not logged in */}
+                  {!user && (
+                    <Card className="px-0 py-2 my-1 mt-4 border-0">
+                      <CardContent className="px-3 py-3">
+                        <Button
+                          onClick={handleDownloadClick}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Video
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               )}
             </div>
@@ -865,6 +904,28 @@ const SeasonComponent = () => {
           </div>
         </div>
       </div>
+
+      {/* Download Modal */}
+      <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-bold text-gray-800">
+              Why Download?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-4">
+            <p className="text-gray-600 text-lg">
+              Save instantly with us for $100 and have all these videos
+            </p>
+            <Button
+              onClick={handleSignupRedirect}
+              className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+            >
+              Sign Up Now!
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
