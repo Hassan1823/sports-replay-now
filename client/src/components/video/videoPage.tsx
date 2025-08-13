@@ -983,6 +983,16 @@ export function VideoPageMain() {
     return hasUploads;
   };
 
+  // Function to cancel all active uploads
+  const cancelAllUploads = () => {
+    setActiveUploads({});
+    setUploadingGameId(null);
+    uploadingGameIdRef.current = null;
+    setShowUploadModal(false);
+    setUploadModalDismissed(false);
+    toast.info("All uploads have been cancelled");
+  };
+
   const isTrimming = () => {
     const result = replacingVideo?.status === "uploading" || localTrimming;
     console.log("isTrimming check:", {
@@ -1594,19 +1604,21 @@ export function VideoPageMain() {
             <Button
               size={"sm"}
               variant={
-                !selectedGameId || loading || editMode ? "outline" : "default"
+                hasActiveUploads()
+                  ? "destructive"
+                  : !selectedGameId || loading || editMode
+                  ? "outline"
+                  : "default"
               }
-              disabled={
-                !selectedGameId ||
-                loading ||
-                editMode ||
-                hasActiveUploads() ||
-                isTrimming()
+              disabled={!selectedGameId || loading || editMode || isTrimming()}
+              onClick={
+                hasActiveUploads()
+                  ? cancelAllUploads
+                  : () => fileInputRef.current?.click()
               }
-              onClick={() => fileInputRef.current?.click()}
               className="disabled:opacity-50 text-xs disabled:cursor-not-allowed"
             >
-              UPLOAD
+              {hasActiveUploads() ? "CANCEL" : "UPLOAD"}
               <Input
                 id="videoFiles"
                 ref={fileInputRef}
@@ -2026,10 +2038,6 @@ export function VideoPageMain() {
                     Videos are currently uploading. Please wait before switching
                     folders or seasons.
                   </p>
-                  <p className="text-sm text-gray-600">
-                    You can continue using the application while uploads are in
-                    progress.
-                  </p>
                 </div>
               </div>
             </div>
@@ -2333,7 +2341,9 @@ export function VideoPageMain() {
                       <div className="w-full h-12 bg-gray-400 rounded mx-auto mb-4 "></div>
                       <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 "></div>
                       <div className="h-3 bg-gray-400 rounded w-32 mx-auto "></div>
-                      <h2 className="text-base font-medium mb-2">No Video</h2>
+                      <h2 className="text-base font-medium mb-2">
+                        No Video Selected
+                      </h2>
                     </div>
                   </div>
                 </div>
