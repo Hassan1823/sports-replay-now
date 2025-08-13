@@ -2334,10 +2334,7 @@ export function VideoPageMain() {
                               }
                               className="flex flex-col items-center h-auto p-1"
                               onClick={() => selectVideo(video)}
-                              disabled={
-                                isTrimming() ||
-                                (!editMode && hasActiveUploads())
-                              }
+                              disabled={isTrimming()}
                             >
                               <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-200">
                                 {video.videoThumbnail ? (
@@ -2555,8 +2552,7 @@ export function VideoPageMain() {
                               (replacingVideo?.videoId === video._id &&
                                 replacingVideo?.status === "uploading") ||
                               (localTrimming &&
-                                selectedVideo?._id === video._id) ||
-                              hasActiveUploads()
+                                selectedVideo?._id === video._id)
                             }
                           >
                             <Share2 className="w-8 h-8" />
