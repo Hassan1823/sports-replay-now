@@ -3,6 +3,7 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import crypto from "crypto";
 
 export const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -227,14 +228,20 @@ const sendResetPasswordEmail = asyncHandler(async (req, res) => {
   try {
     const { email } = req.body;
 
-    // generate reset otp
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    // generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
 
-    // check if account exist and update the opt
+    // check if account exist and update the reset token
     const isExist = await User.findOneAndUpdate(
       { email },
-      { $set: { otp } }, // This will update if exists or add if doesn't
-      { new: true } // Return the updated document
+      {
+        $set: {
+          resetPasswordToken: resetToken,
+          resetPasswordExpires: resetTokenExpiry,
+        },
+      },
+      { new: true }
     );
 
     if (!isExist) {
@@ -244,20 +251,18 @@ const sendResetPasswordEmail = asyncHandler(async (req, res) => {
       });
     }
 
-    const redirectLink = `${process.env.CORS_ORIGIN}/forgot-password?email=${isExist.email}`;
+    const redirectLink = `${process.env.CORS_ORIGIN}/reset-password?token=${resetToken}`;
 
     // send email to user
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 400px; margin: auto; border: 1px solid #eee; padding: 24px; border-radius: 8px;">
       <h2>Hello ${isExist.firstName || "User"},</h2>
-      <p>Your OTP for password reset is:</p>
-      <div style="font-size: 24px; font-weight: bold; margin: 16px 0;">${otp}</div>
-      <p>Click the button below to reset your password:</p>
+      <p>You requested to reset your password. Click the button below to reset it:</p>
       <a href="${redirectLink}" 
          style="display: inline-block; padding: 12px 24px; background: #007bff; color: #fff; text-decoration: none; border-radius: 4px; font-weight: bold;">
         Reset Password
       </a>
-      <p style="margin-top: 24px; color: #888; font-size: 12px;">If you did not request this, please ignore this email.</p>
+      <p style="margin-top: 24px; color: #888; font-size: 12px;">This link will expire in 10 minutes. If you did not request this, please ignore this email.</p>
       </div>
     `;
 
@@ -278,6 +283,50 @@ const sendResetPasswordEmail = asyncHandler(async (req, res) => {
     if (error.code) {
       console.log("SMTP Error Code:", error.code);
     }
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
+// * verify reset token and reset password
+const resetPassword = asyncHandler(async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Token and new password are required",
+      });
+    }
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token",
+      });
+    }
+
+    // Update password and clear reset token
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully",
+    });
+  } catch (error) {
+    console.log("🚀 ~ resetPassword ~ error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -327,5 +376,6 @@ export {
   registerUser,
   loginUser,
   sendResetPasswordEmail,
+  resetPassword,
   changeCurrentPassword,
 };

@@ -4,6 +4,7 @@ import {
   loginUser,
   registerUser,
   sendResetPasswordEmail,
+  resetPassword,
 } from "../controller/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -17,6 +18,9 @@ router.route("/login").post(loginUser);
 
 // *  send reset password email
 router.route("/reset-email").post(sendResetPasswordEmail);
+
+// * reset password with token
+router.route("/reset-password").post(resetPassword);
 
 // * update password
 router.route("/change-password").post(changeCurrentPassword);

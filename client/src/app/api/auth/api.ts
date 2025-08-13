@@ -177,3 +177,37 @@ export const updatePassword = async (
     throw error;
   }
 };
+
+// * reset password with token
+export const resetPasswordWithToken = async (
+  token: string,
+  newPassword: string
+) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token, newPassword }),
+      credentials: "include",
+    });
+
+    // Handle non-OK responses
+    if (!response.ok) {
+      // Try to parse error as JSON, fallback to text
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: await response.text() };
+      }
+      throw new Error(errorData.message || "Reset password failed");
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.log("🚀 ~ error:", error);
+    throw error;
+  }
+};
