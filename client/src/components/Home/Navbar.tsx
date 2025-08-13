@@ -19,7 +19,7 @@ const NavLink = ({ href, label }: { href: string; label: string }) => {
     <Link
       href={href}
       className={cn(
-        "text-sm font-medium transition-colors",
+        "text-sm font-medium transition-colors w-auto text-nowrap",
         isActive
           ? "text-primary"
           : "text-muted-foreground hover:text-foreground"
@@ -36,26 +36,28 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur shadow-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-[0vw] duration-300 lg:px-[2vw] py-[5vh]">
+      <div className="container mx-auto flex h-auto items-center justify-between duration-300 px-[3vw] py-[0vh]">
         {/* brand ---------------------------------------------------- */}
         <Link
           href="/"
-          className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase flex justify-center items-center gap-2"
+          className="text-[4rem] font-black tracking-tight uppercase flex justify-center items-center gap-1"
         >
           <Image
             src={"/sports-logo.png"}
             alt="logo"
             width={40}
             height={40}
-            className="w-12 h-12 lg:w-[60px] lg:h-[60px] ms-[2vw]"
+            className="w-12 h-12 lg:w-[70px] lg:h-[70px]"
           />
-          Sports&nbsp;<span className="text-primary">Replay</span>&nbsp;NOW
+          Sports&nbsp;<span className="text-[4rem] font-black">Replay</span>
+          &nbsp;NOW
         </Link>
 
         {/* desktop nav --------------------------------------------- */}
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-6 md:flex ">
           <NavLink href="/plans" label="Plans" />
           <NavLink href="/contact" label="Contact" />
+          <NavLink href="/contact" label="Tutorial Video" />
           {user && user.stripePaymentStatus === "paid" && (
             <NavLink href="/videos" label="Videos" />
           )}
@@ -73,7 +75,7 @@ const Navbar = () => {
           ) : (
             <Button
               asChild
-              className="w-[12vw] h-auto p-[2%] rounded-full bg-green-600 hover:bg-green-700/80"
+              className="min-w-[12vw] text-lg w-auto h-auto p-[4%] rounded-full bg-green-600 hover:bg-green-700/80"
             >
               <Link href="/login">Sign&nbsp;Up&nbsp;Or&nbsp;Login</Link>
             </Button>

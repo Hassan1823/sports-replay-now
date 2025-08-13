@@ -8,6 +8,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import Loading from "@/components/shared/loading";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 interface PricingCardProps {
   isProcessingPayment?: boolean;
@@ -16,14 +17,17 @@ interface PricingCardProps {
 export function PricingCard({ isProcessingPayment = false }: PricingCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const router = useRouter();
   const isSubscribed = user?.stripePaymentStatus === "paid";
 
   const handleCheckout = async () => {
-    setIsLoading(true);
     if (!user) {
-      toast.error("Please log in to continue.");
+      // Redirect unauthenticated users to login page
+      router.push("/login");
       return;
     }
+
+    setIsLoading(true);
 
     if (isSubscribed) {
       toast.message("Your subscription is already active");

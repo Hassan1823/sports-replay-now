@@ -6,7 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import Protected from "../protected";
 
 const Plans = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -101,7 +100,7 @@ const Plans = () => {
 
     savePaymentDetails();
 
-    if (sessionId && success && user!.stripePaymentStatus === "paid") {
+    if (sessionId && success && user && user.stripePaymentStatus === "paid") {
       router.push("/");
       return;
     }
@@ -118,11 +117,8 @@ const Plans = () => {
 
   return (
     <div>
-      <Protected>
-        <Navbar />
-
-        <PricingCard isProcessingPayment={isLoading} />
-      </Protected>
+      <Navbar />
+      <PricingCard isProcessingPayment={isLoading} />
     </div>
   );
 };
