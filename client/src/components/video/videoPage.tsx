@@ -970,6 +970,10 @@ export function VideoPageMain() {
   // state to tract uploading gameId
   const [uploadingGameId, setUploadingGameId] = useState<string | null>(null);
 
+  // Upload modal states
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadModalDismissed, setUploadModalDismissed] = useState(false);
+
   // Helper function to check if there are any active uploads
   const hasActiveUploads = () => {
     const hasUploads = Object.values(activeUploads).some((gameUploads) =>
@@ -1204,38 +1208,19 @@ export function VideoPageMain() {
     };
   }, [selectedVideoDetails]);
 
-  // Manage upload notification toast
+  // Manage upload notification modal
   useEffect(() => {
     const hasUploads = hasActiveUploads();
 
-    if (hasUploads) {
-      // Show persistent toast for uploads
-      toast.loading(
-        <div className="flex items-center justify-between w-full min-w-[300px]">
-          <div className="flex items-center gap-2 flex-1">
-            {/* <Loading size={16} /> */}
-            <span className="w-full text-center flex justify-center items-center">
-              Video upload in progress. Please wait before switching folders or
-              seasons.
-            </span>
-          </div>
-          <button
-            onClick={() => toast.dismiss(uploadToastId)}
-            className="ml-4 text-inherit hover:text-inherit transition-colors cursor-pointer flex-shrink-0"
-          >
-            ✕
-          </button>
-        </div>,
-        {
-          id: uploadToastId,
-          duration: Infinity, // Keep until dismissed or uploads complete
-        }
-      );
-    } else {
-      // Dismiss toast when no uploads are active
-      toast.dismiss(uploadToastId);
+    if (hasUploads && !uploadModalDismissed) {
+      // Show upload modal
+      setShowUploadModal(true);
+    } else if (!hasUploads) {
+      // Hide modal when no uploads are active and reset dismissed state
+      setShowUploadModal(false);
+      setUploadModalDismissed(false);
     }
-  }, [activeUploads]);
+  }, [activeUploads, uploadModalDismissed]);
 
   // * show share modal
   const [shareModal, setShareModal] = useState(false);
@@ -2003,6 +1988,52 @@ export function VideoPageMain() {
         {/* main container for video player */}
         {/* <div className="flex-1 flex flex-col h-full"> */}
         <div className="flex-1 flex flex-col lg:w-flex-1 lg:h-full w-full h-auto">
+          {/* Upload Progress Modal */}
+          {showUploadModal && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center">
+              <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-2xl border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-black">
+                    Video Upload in Progress
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      setUploadModalDismissed(true);
+                    }}
+                    className="text-gray-500 hover:text-black transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <p className="text-black mb-2">
+                    Videos are currently uploading. Please wait before switching
+                    folders or seasons.
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    You can continue using the application while uploads are in
+                    progress.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="flex-1 p-4 border-b aspect-video">
             {fetchingVideoDetails ||
             replacingVideo?.status === "uploading" ||
