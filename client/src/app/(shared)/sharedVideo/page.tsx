@@ -16,7 +16,7 @@ const initialVideoDetails = {
   id: "",
   name: "",
   description: "",
-  duration: 0,
+  duration: 0 as number | string,
   publishedAt: "",
   account: {
     displayName: "",
@@ -51,23 +51,50 @@ const ShareVideoPage = () => {
         setIsLoading(true);
         const res = await getVideoDetails(shareVideoId);
 
-        if (
-          res.success &&
-          res.data &&
-          typeof res.data === "object" &&
-          "thumbnailPath" in res.data
-        ) {
-          setVideoDetails(res.data as typeof initialVideoDetails);
-          setThumbnail(
-            `${
-              process.env.PEERTUBE_VIDEO_URL ||
-              "https://video.visiononline.games"
-            }${(res.data as { thumbnailPath: string }).thumbnailPath}` || ""
-          );
+        console.log("API Response:", res);
+
+        if (res.success && res.data && typeof res.data === "object") {
+          // Transform the database response to match expected format
+          const videoData = res.data as any;
+
+          const transformedVideoDetails = {
+            id: videoData._id || videoData.id || "",
+            name: videoData.title || videoData.name || "",
+            description: videoData.description || "",
+            duration: videoData.videoDuration || videoData.duration || 0,
+            publishedAt: videoData.createdAt || videoData.publishedAt || "",
+            account: {
+              displayName:
+                videoData.videoChannel || videoData.account?.displayName || "",
+            },
+            fileUrl: videoData.fileUrl || "",
+            thumbnailPath:
+              videoData.videoThumbnail || videoData.thumbnailPath || "",
+          };
+
+          setVideoDetails(transformedVideoDetails);
+
+          // Set thumbnail - videoThumbnail already contains the complete URL
+          const thumbnailPath = transformedVideoDetails.thumbnailPath;
+          if (thumbnailPath) {
+            console.log("Setting thumbnail from database:", thumbnailPath);
+            setThumbnail(thumbnailPath);
+          } else {
+            console.log("No thumbnail found, using fallback SVG");
+            // Use the same fallback SVG as videoPage
+            setThumbnail(
+              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iNDUiIHZpZXdCb3g9IjAgMCA4MCA0NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjQ1IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAyMi41QzMyIDIxLjExOTQgMzMuMTE5NCAyMCAzNC41IDIwSDQ1LjVDNDYuODgwNiAyMCA0OCAyMS4xMTk0IDQ4IDIyLjVWMzIuNUM0OCAzMy44ODA2IDQ2Ljg4MDYgMzUgNDUuNSAzNUgzNC41QzMzLjExOTQgMzUgMzIgMzMuODgwNiAzMiAzMi41VjIyLjVaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0zNiAyNkwyOCAzMkw0MiAzMkwzNiAyNloiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo="
+            );
+          }
+
           // Simulate view count for demo
           setViewCount(Math.floor(Math.random() * 10000) + 1000);
         } else {
-          console.error("Error fetching video details:", res.message);
+          console.error(
+            "Error fetching video details:",
+            res.message || "Unknown error"
+          );
+          console.error("Full response:", res);
           setError(
             "Failed to fetch video details. Please check the video ID and try again."
           );
@@ -75,6 +102,7 @@ const ShareVideoPage = () => {
         }
       } catch (error) {
         console.log("🚀 ~ fetchVideoDetails ~ error:", error);
+        console.error("Full error object:", error);
         setError(
           "Network error occurred. Please check your connection and try again."
         );
@@ -99,13 +127,17 @@ const ShareVideoPage = () => {
 
     if (videoDetails.fileUrl) {
       const videoSrc = videoDetails.fileUrl;
+      console.log("Video source:", videoSrc);
 
+      // Handle HLS streams (.m3u8 files)
       if (videoSrc.endsWith(".m3u8")) {
+        console.log("Loading HLS stream:", videoSrc);
         if (Hls.isSupported()) {
           hls = new Hls();
           hls.loadSource(videoSrc);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            console.log("HLS manifest parsed, video loading complete");
             setIsVideoLoading(false);
           });
           hls.on(Hls.Events.ERROR, (event, data) => {
@@ -127,18 +159,27 @@ const ShareVideoPage = () => {
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           // For Safari
+          console.log("Loading HLS stream in Safari:", videoSrc);
           video.src = videoSrc;
           video.addEventListener("loadedmetadata", () => {
+            console.log("Safari video metadata loaded");
             setIsVideoLoading(false);
           });
         }
-      } else {
-        // Direct video file
+      }
+      // Handle direct video files (mp4, webm, etc.)
+      else if (videoSrc) {
+        console.log("Setting direct video source:", videoSrc);
         video.src = videoSrc;
         video.addEventListener("loadedmetadata", () => {
+          console.log("Direct video metadata loaded");
           setIsVideoLoading(false);
         });
       }
+    } else {
+      console.log("No fileUrl found in video details");
+      console.log("Video details:", videoDetails);
+      setIsVideoLoading(false);
     }
 
     return () => {
@@ -148,7 +189,21 @@ const ShareVideoPage = () => {
     };
   }, [videoDetails]);
 
-  const formatDuration = (seconds: number) => {
+  const formatDuration = (duration: number | string) => {
+    // If duration is already a formatted string (like "01:34"), return it as is
+    if (typeof duration === "string" && duration.includes(":")) {
+      return duration;
+    }
+
+    // Convert to number if it's a string
+    const seconds =
+      typeof duration === "string" ? parseFloat(duration) : duration;
+
+    // Ensure seconds is a valid number
+    if (!seconds || isNaN(seconds) || seconds < 0) {
+      return "0:00";
+    }
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
@@ -162,6 +217,11 @@ const ShareVideoPage = () => {
   };
 
   const formatViewCount = (count: number) => {
+    // Ensure count is a valid number
+    if (!count || isNaN(count) || count < 0) {
+      return "0";
+    }
+
     if (count >= 1000000) {
       return `${(count / 1000000).toFixed(1)}M`;
     } else if (count >= 1000) {
@@ -249,9 +309,18 @@ const ShareVideoPage = () => {
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {videoDetails.publishedAt
-                            ? new Date(
-                                videoDetails.publishedAt
-                              ).toLocaleDateString()
+                            ? (() => {
+                                try {
+                                  const date = new Date(
+                                    videoDetails.publishedAt
+                                  );
+                                  return isNaN(date.getTime())
+                                    ? "N/A"
+                                    : date.toLocaleDateString();
+                                } catch {
+                                  return "N/A";
+                                }
+                              })()
                             : "N/A"}
                         </span>
                         <span className="flex items-center gap-1">
@@ -269,62 +338,101 @@ const ShareVideoPage = () => {
             <div className="flex-1 flex flex-col lg:h-full w-full h-auto">
               <div className="flex-1 p-0 border-b aspect-video bg-black rounded">
                 <div className="h-full w-full relative">
-                  {isVideoLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt={videoDetails.name}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : null}
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                          <p className="text-white">Loading video...</p>
+                  {!videoDetails ? (
+                    // Skeleton loading when video details are not yet loaded
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+                      <div className="text-center">
+                        <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 animate-pulse flex items-center justify-center">
+                          <div className="w-8 h-8 bg-gray-300 rounded-full animate-pulse"></div>
                         </div>
+                        <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 animate-pulse"></div>
+                        <p className="text-gray-600 text-lg font-medium">
+                          Loading video details...
+                        </p>
+                        <p className="text-gray-500 text-sm mt-2">
+                          Please wait a moment
+                        </p>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <video
+                        ref={videoRef}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        controls
+                        autoPlay
+                        poster={thumbnail}
+                        onLoadStart={() => setIsVideoLoading(true)}
+                        onCanPlay={() => setIsVideoLoading(false)}
+                        onError={() => {
+                          setIsVideoLoading(false);
+                          toast.error("Failed to load video");
+                        }}
+                      />
+                      {isVideoLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-200 bg-opacity-90">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-gray-400 rounded-full mx-auto mb-4 animate-pulse flex items-center justify-center">
+                              <div className="w-8 h-8 bg-gray-300 rounded-full animate-pulse"></div>
+                            </div>
+                            <div className="h-4 bg-gray-400 rounded w-48 mx-auto mb-2 animate-pulse"></div>
+                            <p className="text-gray-600 text-lg font-medium">
+                              Loading video...
+                            </p>
+                            <p className="text-gray-500 text-sm mt-2">
+                              Please wait a moment
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                  <video
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-contain"
-                    controls
-                    autoPlay
-                    poster={thumbnail}
-                    onError={() => {
-                      setIsVideoLoading(false);
-                      toast.error("Failed to load video");
-                    }}
-                  />
                 </div>
               </div>
 
               {/* Chapters grid below player */}
               <div className="h-auto p-4 overflow-y-auto">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Button
-                    variant="secondary"
-                    className="flex flex-col items-center h-auto p-1"
-                  >
-                    <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-300">
-                      {thumbnail ? (
+                  {!videoDetails ? (
+                    // Skeleton loading for thumbnail preview
+                    <div className="flex flex-col items-center h-auto p-1">
+                      <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-200 animate-pulse">
+                        <div className="w-full h-full bg-gray-300 animate-pulse"></div>
+                      </div>
+                      <div className="h-4 bg-gray-300 rounded w-24 mb-1 animate-pulse"></div>
+                      <div className="h-3 bg-gray-300 rounded w-16 animate-pulse"></div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      className="flex flex-col items-center h-auto p-1"
+                    >
+                      <div className="w-full aspect-video mb-2 flex items-center justify-center rounded overflow-hidden bg-gray-300">
                         <img
                           src={thumbnail}
                           alt={videoDetails.name}
                           className="object-cover w-full h-full"
+                          onError={(e) => {
+                            // If thumbnail fails to load, show a placeholder
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const placeholder =
+                              target.nextElementSibling as HTMLElement;
+                            if (placeholder) placeholder.style.display = "flex";
+                          }}
                         />
-                      ) : (
-                        <span className="text-xs">No Thumbnail</span>
-                      )}
-                    </div>
-                    <span className="text-sm font-medium truncate w-full text-center">
-                      {videoDetails.name || "Untitled"}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {formatDuration(videoDetails.duration)}
-                    </span>
-                  </Button>
+                        <div className="hidden items-center justify-center w-full h-full text-xs text-gray-500">
+                          <span>Video Preview</span>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium truncate w-full text-center">
+                        {videoDetails.name || "Untitled"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {formatDuration(videoDetails.duration)}
+                      </span>
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -336,21 +444,34 @@ const ShareVideoPage = () => {
                   Video
                 </h2>
                 <CardContent className="p-0">
-                  <ol className="list-none space-y-1">
-                    <li className="px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 cursor-pointer">
-                      <div className="flex items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
-                        <div className="w-5 h-5 flex items-center justify-center">
-                          <CircleCheck className="w-4 h-4 text-black" />
+                  {!videoDetails ? (
+                    // Skeleton loading for video info
+                    <div className="space-y-1">
+                      <div className="px-0 text-[0.85rem] rounded flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-2 w-[80%]">
+                          <div className="w-5 h-5 bg-gray-400 rounded animate-pulse"></div>
+                          <div className="h-4 bg-gray-400 rounded w-32 animate-pulse"></div>
                         </div>
-                        <span className="truncate block">
-                          {videoDetails.name || "no title"}
-                        </span>
+                        <div className="h-3 bg-gray-400 rounded w-12 animate-pulse"></div>
                       </div>
-                      <span className="text-xs text-gray-700">
-                        {formatDuration(videoDetails.duration)}
-                      </span>
-                    </li>
-                  </ol>
+                    </div>
+                  ) : (
+                    <ol className="list-none space-y-1">
+                      <li className="px-0 text-[0.85rem] hover:bg-[#858585] rounded flex justify-between items-center gap-2 cursor-pointer">
+                        <div className="flex items-center gap-2 w-[80%] text-wrap whitespace-break-spaces">
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            <CircleCheck className="w-4 h-4 text-black" />
+                          </div>
+                          <span className="truncate block">
+                            {videoDetails.name || "no title"}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-700">
+                          {formatDuration(videoDetails.duration)}
+                        </span>
+                      </li>
+                    </ol>
+                  )}
                 </CardContent>
               </Card>
             </div>

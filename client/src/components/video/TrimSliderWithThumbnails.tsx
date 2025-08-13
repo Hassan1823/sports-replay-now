@@ -70,6 +70,21 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
     }
   }, [isTrimming, onTrimStateChange]);
 
+  // Reset start and end values when duration changes (e.g., when switching videos)
+  useEffect(() => {
+    console.log("TrimSliderWithThumbnails: duration changed to:", duration);
+    if (duration && duration > 0) {
+      setStart(0);
+      setEnd(duration);
+      console.log(
+        "TrimSliderWithThumbnails: reset start to 0, end to:",
+        duration
+      );
+    } else {
+      console.warn("TrimSliderWithThumbnails: invalid duration:", duration);
+    }
+  }, [duration]);
+
   // Initialize video element
   useEffect(() => {
     if (!videoUrl) return;
@@ -157,6 +172,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 
   // Touch support for handles
   const handleStartDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    console.log("TrimSliderWithThumbnails: handleStartDrag called", {
+      start,
+      end,
+      duration,
+    });
     e.preventDefault();
     const slider = (e.target as HTMLElement).parentElement!;
     const getClientX = (evt: MouseEvent | TouchEvent) =>
@@ -167,6 +187,13 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       let percent = (getClientX(moveEvent) - rect.left) / rect.width;
       percent = Math.max(0, Math.min(percent, (end - 1) / duration));
       const newStart = Math.round(percent * duration);
+      console.log("TrimSliderWithThumbnails: start drag onMove", {
+        percent,
+        newStart,
+        currentStart: start,
+        currentEnd: end,
+        duration,
+      });
       setStart(Math.min(newStart, end - 1));
       if (onTrimChange) onTrimChange(Math.min(newStart, end - 1), end); // Add this
     };
@@ -207,6 +234,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   };
 
   const handleEndDrag = (e: React.MouseEvent | React.TouchEvent) => {
+    console.log("TrimSliderWithThumbnails: handleEndDrag called", {
+      start,
+      end,
+      duration,
+    });
     e.preventDefault();
     const slider = (e.target as HTMLElement).parentElement!;
     const getClientX = (evt: MouseEvent | TouchEvent) =>
@@ -217,6 +249,13 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
       let percent = (getClientX(moveEvent) - rect.left) / rect.width;
       percent = Math.max((start + 1) / duration, Math.min(percent, 1));
       const newEnd = Math.round(percent * duration);
+      console.log("TrimSliderWithThumbnails: end drag onMove", {
+        percent,
+        newEnd,
+        currentStart: start,
+        currentEnd: end,
+        duration,
+      });
       setEnd(Math.max(newEnd, start + 1));
       if (onTrimChange) onTrimChange(start, Math.max(newEnd, start + 1)); // Add this
     };
@@ -451,6 +490,11 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
 
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Debug info */}
+      <div className="text-xs text-gray-500 mb-2">
+        Debug: start={start}, end={end}, duration={duration}, isTrimming=
+        {isTrimming}, isVideoReady={isVideoReady}
+      </div>
       {/* Range slider */}
       <div
         className="relative w-full flex items-center gap-2 select-none"
@@ -462,6 +506,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
           disabled={end <= start || isTrimming || !isVideoReady}
           className="z-50 bg-[#858585] rounded-none disabled:cursor-not-allowed"
           onClick={handleTrim}
+          title={`Button state: end=${end}, start=${start}, isTrimming=${isTrimming}, isVideoReady=${isVideoReady}`}
         >
           {isTrimming ? (
             <span>

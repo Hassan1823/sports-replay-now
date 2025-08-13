@@ -1262,8 +1262,10 @@ export function VideoPageMain() {
     active: boolean;
   }>({ start: 0, end: 0, active: false });
 
-  const duration = trimmedVideo.end - trimmedVideo.start; // 11 - 5 = 6 seconds
-  console.log("🚀 ~ VideoPageMain ~ duration:", duration);
+  // Calculate duration from the actual video, not from trimmed state
+  const videoDuration =
+    selectedVideoDetails?.duration || videoRef.current?.duration || 0;
+  console.log("🚀 ~ VideoPageMain ~ videoDuration:", videoDuration);
 
   // Add this function to handle the video replacement
   const handleDragDrop = (
@@ -1527,6 +1529,15 @@ export function VideoPageMain() {
         // Reset localTrimming state and dismiss trim toast
         setLocalTrimming(false);
         toast.dismiss(trimToastId);
+
+        // Reset trimmedVideo state to allow re-trimming
+        setTrimmedVideo({
+          blob: null,
+          start: 0,
+          end: 0,
+          duration: 0,
+          videoDuration: "00:00",
+        });
 
         // Reset replacingVideo to null immediately to ensure UI is re-enabled
         setReplacingVideo(null);
@@ -2040,15 +2051,28 @@ export function VideoPageMain() {
                                 videoRef.current.duration > 0)) && (
                               <div className="absolute top-0 left-0 right-0 z-50 w-full flex flex-col items-center px-0 py-0 bg-black/50 rounded-t-md">
                                 <TrimSliderWithThumbnails
-                                  duration={
-                                    selectedVideoDetails?.duration ||
-                                    videoRef.current?.duration ||
-                                    0
-                                  }
+                                  duration={(() => {
+                                    const duration =
+                                      selectedVideoDetails?.duration ||
+                                      videoRef.current?.duration ||
+                                      0;
+                                    console.log(
+                                      "TrimSliderWithThumbnails duration prop:",
+                                      {
+                                        selectedVideoDetailsDuration:
+                                          selectedVideoDetails?.duration,
+                                        videoRefDuration:
+                                          videoRef.current?.duration,
+                                        finalDuration: duration,
+                                      }
+                                    );
+                                    return duration;
+                                  })()}
                                   videoUrl={selectedVideoDetails.fileUrl || ""}
                                   videoThumbnail={videoThumbnail}
                                   videoId={selectedVideo?._id}
                                   video={selectedVideo as VideoDetails}
+                                  key={`trim-slider-${selectedVideo?._id}-${selectedVideoDetails?.duration}`}
                                   onTrimChange={(start, end) => {
                                     // Only seek to the position, don't activate trim preview yet
                                     // Trim preview should only be active when actually trimming
