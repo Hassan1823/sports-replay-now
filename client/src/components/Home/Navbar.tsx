@@ -20,9 +20,7 @@ const NavLink = ({ href, label }: { href: string; label: string }) => {
       href={href}
       className={cn(
         "text-sm font-medium transition-colors w-auto text-nowrap",
-        isActive
-          ? "text-primary"
-          : "text-muted-foreground hover:text-foreground"
+        isActive ? "text-primary" : "text-foreground"
       )}
     >
       {label}
@@ -75,9 +73,11 @@ const Navbar = () => {
           ) : (
             <Button
               asChild
-              className="min-w-[12vw] text-lg w-auto h-auto p-[4%] rounded-full bg-green-600 hover:bg-green-700/80"
+              className="min-w-[12vw] text-base w-auto h-auto px-[4%] py-[4%] rounded-full bg-green-600 hover:bg-green-700/80 uppercase"
             >
-              <Link href="/login">Sign&nbsp;Up&nbsp;Or&nbsp;Login</Link>
+              <Link href="/login" className="uppercase">
+                Sign&nbsp;Up&nbsp;Or&nbsp;Login
+              </Link>
             </Button>
           )}
         </nav>
