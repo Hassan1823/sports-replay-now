@@ -10,6 +10,8 @@ import {
   getSeasons,
   getVideoDetails,
   getVideosForGame,
+  moveVideoToGame,
+  moveGameToSeason,
   renameGame,
   renameSeasonFolder,
   updateVideoFile,
@@ -1262,85 +1264,8 @@ export function VideoPageMain() {
     selectedVideoDetails?.duration || videoRef.current?.duration || 0;
   console.log("🚀 ~ VideoPageMain ~ videoDuration:", videoDuration);
 
-  // Add this function to handle the video replacement
-  const handleDragDrop = (
-    draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
-    targetType: "season" | "game",
-    targetId: string
-  ) => {
-    // Handle local drag and drop operations
-    if (draggedItem.type === "video" && targetType === "game") {
-      // Move video to different game
-      const videoId = draggedItem.id;
-      const targetGameId = targetId;
-
-      // Find the video and remove it from its current location
-      setSeasons((prevSeasons) => {
-        const newSeasons = [...prevSeasons];
-
-        // Remove video from current game
-        for (const season of newSeasons) {
-          for (const game of season.games) {
-            const videoIndex = game.videos.findIndex((v) => v._id === videoId);
-            if (videoIndex !== -1) {
-              const video = game.videos[videoIndex];
-              game.videos.splice(videoIndex, 1);
-
-              // Add video to target game
-              for (const targetSeason of newSeasons) {
-                const targetGame = targetSeason.games.find(
-                  (g) => g.id === targetGameId
-                );
-                if (targetGame) {
-                  targetGame.videos.push(video);
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        }
-
-        return newSeasons;
-      });
-    } else if (draggedItem.type === "game" && targetType === "season") {
-      // Move game to different season
-      const gameId = draggedItem.id;
-      const targetSeasonId = targetId;
-
-      setSeasons((prevSeasons) => {
-        const newSeasons = [...prevSeasons];
-        let gameToMove: Game | null = null;
-
-        // Find and remove game from current season
-        for (const season of newSeasons) {
-          const gameIndex = season.games.findIndex((g) => g.id === gameId);
-          if (gameIndex !== -1) {
-            gameToMove = season.games[gameIndex];
-            season.games.splice(gameIndex, 1);
-            break;
-          }
-        }
-
-        // Add game to target season
-        if (gameToMove) {
-          const targetSeason = newSeasons.find((s) => s.id === targetSeasonId);
-          if (targetSeason) {
-            targetSeason.games.push(gameToMove);
-          }
-        }
-
-        return newSeasons;
-      });
-    }
-
-    console.log(
-      `Dropped ${draggedItem.type} ${draggedItem.id} into ${targetType} ${targetId}`
-    );
-  };
-
   // Separate drag drop handler for library sidebar
-  const handleLibraryDragDrop = (
+  const handleLibraryDragDrop = async (
     draggedItem: { type: "season" | "game" | "video"; id: string; data: any },
     targetType: "season" | "game",
     targetId: string
@@ -1384,6 +1309,54 @@ export function VideoPageMain() {
 
           return newSeasons;
         });
+
+        // Persist changes to database
+        try {
+          for (const video of videosToMove) {
+            if (video._id) {
+              await moveVideoToGame(video._id, targetGameId);
+            }
+          }
+          // toast.success(`${videosToMove.length} videos moved successfully`);
+
+          // Also update main seasons state to keep it in sync
+          setSeasons((prevSeasons) => {
+            const newSeasons = [...prevSeasons];
+
+            // Remove all selected videos from their current locations
+            for (const videoToMove of videosToMove) {
+              for (const season of newSeasons) {
+                for (const game of season.games) {
+                  const videoIndex = game.videos.findIndex(
+                    (v) => v._id === videoToMove._id
+                  );
+                  if (videoIndex !== -1) {
+                    game.videos.splice(videoIndex, 1);
+                    break;
+                  }
+                }
+              }
+            }
+
+            // Add all videos to target game
+            for (const targetSeason of newSeasons) {
+              const targetGame = targetSeason.games.find(
+                (g) => g.id === targetGameId
+              );
+              if (targetGame) {
+                targetGame.videos.push(...videosToMove);
+                break;
+              }
+            }
+
+            return newSeasons;
+          });
+        } catch (error) {
+          console.error("Error moving videos to database:", error);
+          // toast.error("Failed to move videos. Please try again.");
+          // Revert local state on error
+          // You could implement a rollback mechanism here if needed
+        }
       } else {
         // Handle single video drag and drop
         const videoId = draggedItem.id;
@@ -1418,6 +1391,49 @@ export function VideoPageMain() {
 
           return newSeasons;
         });
+
+        // Persist changes to database
+        try {
+          await moveVideoToGame(videoId, targetGameId);
+          // toast.success("Video moved successfully");
+
+          // Also update main seasons state to keep it in sync
+          setSeasons((prevSeasons) => {
+            const newSeasons = [...prevSeasons];
+
+            // Remove video from current game
+            for (const season of newSeasons) {
+              for (const game of season.games) {
+                const videoIndex = game.videos.findIndex(
+                  (v) => v._id === videoId
+                );
+                if (videoIndex !== -1) {
+                  const video = game.videos[videoIndex];
+                  game.videos.splice(videoIndex, 1);
+
+                  // Add video to target game
+                  for (const targetSeason of newSeasons) {
+                    const targetGame = targetSeason.games.find(
+                      (g) => g.id === targetGameId
+                    );
+                    if (targetGame) {
+                      targetGame.videos.push(video);
+                      break;
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+
+            return newSeasons;
+          });
+        } catch (error) {
+          console.error("Error moving video to database:", error);
+          // toast.error("Failed to move video. Please try again.");
+          // Revert local state on error
+          // You could implement a rollback mechanism here if needed
+        }
       }
     } else if (draggedItem.type === "game" && targetType === "season") {
       // Move game to different season
@@ -1448,6 +1464,72 @@ export function VideoPageMain() {
 
         return newSeasons;
       });
+
+      // Persist changes to database
+      try {
+        await moveGameToSeason(gameId, targetSeasonId);
+        // toast.success("Game moved successfully");
+
+        // Also update main seasons state to keep it in sync
+        setSeasons((prevSeasons) => {
+          const newSeasons = [...prevSeasons];
+          let gameToMove: Game | null = null;
+
+          // Find and remove game from current season
+          for (const season of newSeasons) {
+            const gameIndex = season.games.findIndex((g) => g.id === gameId);
+            if (gameIndex !== -1) {
+              gameToMove = season.games[gameIndex];
+              season.games.splice(gameIndex, 1);
+              break;
+            }
+          }
+
+          // Add game to target season
+          if (gameToMove) {
+            const targetSeason = newSeasons.find(
+              (s) => s.id === targetSeasonId
+            );
+            if (targetSeason) {
+              targetSeason.games.push(gameToMove);
+            }
+          }
+
+          return newSeasons;
+        });
+      } catch (error) {
+        console.error("Error moving game to database:", error);
+        // toast.error("Failed to move game. Please try again.");
+
+        // Rollback local state on error
+        setLibrarySeasons((prevSeasons) => {
+          const newSeasons = [...prevSeasons];
+          let gameToMove: Game | null = null;
+
+          // Find the game in the target season and remove it
+          for (const season of newSeasons) {
+            if (season.id === targetSeasonId) {
+              const gameIndex = season.games.findIndex((g) => g.id === gameId);
+              if (gameIndex !== -1) {
+                gameToMove = season.games[gameIndex];
+                season.games.splice(gameIndex, 1);
+                break;
+              }
+            }
+          }
+
+          // Add game back to its original season
+          if (gameToMove) {
+            // Find the original season (we need to determine this from the game data)
+            // For now, we'll add it back to the first season as a fallback
+            if (newSeasons.length > 0) {
+              newSeasons[0].games.push(gameToMove);
+            }
+          }
+
+          return newSeasons;
+        });
+      }
     }
 
     console.log(

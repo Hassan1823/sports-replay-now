@@ -15,6 +15,8 @@ import {
   updateVideoFile,
   deleteVideo,
   renameVideo,
+  moveVideoToGame,
+  moveGameToSeason,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -67,5 +69,11 @@ router.delete("/delete-video/:videoId", deleteVideo);
 
 // rename video by videoId
 router.put("/rename-video/:videoId", renameVideo);
+
+// move video to different game
+router.put("/move-video/:videoId", moveVideoToGame);
+
+// move game to different season
+router.put("/move-game/:gameId", moveGameToSeason);
 
 export default router;

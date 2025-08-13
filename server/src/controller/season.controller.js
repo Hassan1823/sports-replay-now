@@ -1307,3 +1307,161 @@ export const renameVideo = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// * move video to different game
+export const moveVideoToGame = asyncHandler(async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { targetGameId } = req.body;
+
+    if (!videoId || !targetGameId) {
+      return res.status(400).json({
+        success: false,
+        message: "Video ID and target game ID are required",
+      });
+    }
+
+    // Find the video in the database
+    const video = await Video.findById(videoId);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found",
+      });
+    }
+
+    // Find the target game
+    const targetGame = await Game.findById(targetGameId);
+    if (!targetGame) {
+      return res.status(404).json({
+        success: false,
+        message: "Target game not found",
+      });
+    }
+
+    // Find the current game that contains this video
+    const currentGame = await Game.findOne({ videos: videoId });
+    if (!currentGame) {
+      return res.status(404).json({
+        success: false,
+        message: "Current game not found",
+      });
+    }
+
+    // Remove video from current game
+    await Game.findByIdAndUpdate(currentGame._id, {
+      $pull: { videos: videoId },
+    });
+
+    // Add video to target game
+    await Game.findByIdAndUpdate(targetGameId, {
+      $push: { videos: videoId },
+    });
+
+    // Update video's gameId reference if it exists
+    if (video.gameId) {
+      await Video.findByIdAndUpdate(videoId, {
+        gameId: targetGameId,
+      });
+    }
+
+    console.log(
+      `Video ${videoId} moved from game ${currentGame._id} to game ${targetGameId}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Video moved successfully",
+      data: {
+        videoId,
+        fromGameId: currentGame._id,
+        toGameId: targetGameId,
+      },
+    });
+  } catch (error) {
+    console.log("🚀 ~ moveVideoToGame ~ error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+// * move game to different season
+export const moveGameToSeason = asyncHandler(async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    const { targetSeasonId } = req.body;
+
+    if (!gameId || !targetSeasonId) {
+      return res.status(400).json({
+        success: false,
+        message: "Game ID and target season ID are required",
+      });
+    }
+
+    // Find the game in the database
+    const game = await Game.findById(gameId);
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: "Game not found",
+      });
+    }
+
+    // Find the target season
+    const targetSeason = await Season.findById(targetSeasonId);
+    if (!targetSeason) {
+      return res.status(404).json({
+        success: false,
+        message: "Target season not found",
+      });
+    }
+
+    // Find the current season that contains this game
+    const currentSeason = await Season.findOne({ games: gameId });
+    if (!currentSeason) {
+      return res.status(404).json({
+        success: false,
+        message: "Current season not found",
+      });
+    }
+
+    // Remove game from current season
+    await Season.findByIdAndUpdate(currentSeason._id, {
+      $pull: { games: gameId },
+    });
+
+    // Add game to target season
+    await Season.findByIdAndUpdate(targetSeasonId, {
+      $push: { games: gameId },
+    });
+
+    // Update game's seasonId reference
+    await Game.findByIdAndUpdate(gameId, {
+      seasonId: targetSeasonId,
+    });
+
+    console.log(
+      `Game ${gameId} moved from season ${currentSeason._id} to season ${targetSeasonId}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Game moved successfully",
+      data: {
+        gameId,
+        fromSeasonId: currentSeason._id,
+        toSeasonId: targetSeasonId,
+      },
+    });
+  } catch (error) {
+    console.log("🚀 ~ moveGameToSeason ~ error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      details: error.response?.data || error.message,
+    });
+  }
+});

@@ -382,3 +382,51 @@ export const renameVideo = async (
     throw error;
   }
 };
+
+// Move a video to a different game
+export const moveVideoToGame = async (
+  videoId: string,
+  targetGameId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/move-video/${videoId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetGameId }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error((await response.json()).message || "Move video failed");
+    return await response.json();
+  } catch (error) {
+    console.error("Move video error:", error);
+    throw error;
+  }
+};
+
+// Move a game to a different season
+export const moveGameToSeason = async (
+  gameId: string,
+  targetSeasonId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/move-game/${gameId}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetSeasonId }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error((await response.json()).message || "Move game failed");
+    return await response.json();
+  } catch (error) {
+    console.error("Move game error:", error);
+    throw error;
+  }
+};
