@@ -491,10 +491,7 @@ const TrimSliderWithThumbnails: React.FC<TrimSliderWithThumbnailsProps> = ({
   return (
     <div className="w-full flex flex-col items-center">
       {/* Debug info */}
-      <div className="text-xs text-gray-500 mb-2">
-        Debug: start={start}, end={end}, duration={duration}, isTrimming=
-        {isTrimming}, isVideoReady={isVideoReady}
-      </div>
+
       {/* Range slider */}
       <div
         className="relative w-full flex items-center gap-2 select-none"

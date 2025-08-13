@@ -10,8 +10,8 @@ import {
   getSeasons,
   getVideoDetails,
   getVideosForGame,
-  moveVideoToGame,
   moveGameToSeason,
+  moveVideoToGame,
   renameGame,
   renameSeasonFolder,
   updateVideoFile,
@@ -29,28 +29,28 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
+import Hls from "hls.js";
 import {
   ChevronDown,
   ChevronRight,
   Circle,
   CircleCheck,
   CircleX,
-  Edit,
   MenuIcon,
+  Pencil,
   PlusIcon,
   Share2,
   Trash2,
-  Undo,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
 import { toast } from "sonner";
 import Loading from "../shared/loading";
 import { Checkbox } from "../ui/checkbox";
+import { LibrarySidebar } from "./LibrarySidebar";
 import ShareVideoModal from "./ShareVideoModal";
 import TrimSliderWithThumbnails from "./TrimSliderWithThumbnails";
-import { LibrarySidebar } from "./LibrarySidebar";
 
 type Video = {
   description: string;
@@ -2521,11 +2521,11 @@ export function VideoPageMain() {
               }
             >
               {editMode ? (
-                <Undo className="mr-2 h-4 w-4" />
+                <X className="mr-2 h-4 w-4" />
               ) : (
-                <Edit className="mr-2 h-4 w-4" />
+                <Pencil className="mr-2 h-4 w-4" />
               )}
-              EDIT
+              {editMode ? "CLOSE" : "EDIT"}
             </Button>
             <Button
               size={"sm"}
