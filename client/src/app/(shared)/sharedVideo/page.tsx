@@ -1,6 +1,12 @@
 "use client";
 
-import { Calendar, CircleCheck, FolderOpen, Video } from "lucide-react";
+import {
+  Calendar,
+  CircleCheck,
+  FolderOpen,
+  Video,
+  Download,
+} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,7 +16,14 @@ import Navbar from "@/components/Home/Navbar";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Hls from "hls.js";
+import { useAuth } from "@/context/AuthContext";
 
 const initialVideoDetails = {
   id: "",
@@ -29,6 +42,7 @@ const ShareVideoPage = () => {
   const searchParams = useSearchParams();
   const shareVideoId = searchParams.get("id");
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [thumbnail, setThumbnail] = useState("");
@@ -39,6 +53,7 @@ const ShareVideoPage = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [viewCount, setViewCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   // * getting video details
   const fetchVideoDetails = async (shareVideoId: string) => {
@@ -230,6 +245,14 @@ const ShareVideoPage = () => {
     return count.toString();
   };
 
+  const handleDownloadClick = () => {
+    setShowDownloadModal(true);
+  };
+
+  const handleSignupRedirect = () => {
+    window.location.href = "/login";
+  };
+
   if (isLoading) {
     return <Loading fullScreen />;
   }
@@ -332,6 +355,21 @@ const ShareVideoPage = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Download Button - Only show if user is not logged in */}
+              {!user && (
+                <Card className="px-0 py-2 my-1 mt-4 border-0">
+                  <CardContent className="px-3 py-3">
+                    <Button
+                      onClick={handleDownloadClick}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Video
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Middle: Video player and chapters */}
@@ -478,6 +516,28 @@ const ShareVideoPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Download Modal */}
+      <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-bold text-gray-800">
+              Why Download?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-4">
+            <p className="text-gray-600 text-lg">
+              Save instantly with us for $100 and have all these videos
+            </p>
+            <Button
+              onClick={handleSignupRedirect}
+              className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+            >
+              Sign Up Now!
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
