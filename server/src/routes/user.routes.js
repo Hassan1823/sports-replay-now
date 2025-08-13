@@ -19,6 +19,6 @@ router.route("/login").post(loginUser);
 router.route("/reset-email").post(sendResetPasswordEmail);
 
 // * update password
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+router.route("/change-password").post(changeCurrentPassword);
 
 export default router;

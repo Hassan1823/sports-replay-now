@@ -296,7 +296,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
       newPassword
     );
 
-    const user = await User.findById(req.user?._id);
+    const user = await User.findOne(email);
 
     if (user && user.otp !== otp) {
       return res.status(400).json({
