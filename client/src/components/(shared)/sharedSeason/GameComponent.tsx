@@ -12,7 +12,12 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getGameDetails, getVideoDetails } from "@/app/api/peertube/api";
+import {
+  getGameDetails,
+  getVideoDetails,
+  checkGameOwnership,
+  addSharedGameToLibrary,
+} from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -86,6 +91,10 @@ const GameComponent = () => {
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [showAllVideos, setShowAllVideos] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [isGameOwner, setIsGameOwner] = useState(false);
+  const [isCheckingOwnership, setIsCheckingOwnership] = useState(false);
+  const [isGameImported, setIsGameImported] = useState(false);
+  const [isCheckingImport, setIsCheckingImport] = useState(false);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -298,6 +307,46 @@ const GameComponent = () => {
       fetchGameDetails(shareGameId);
     }
   }, [shareGameId]);
+
+  // Check game ownership when user is logged in
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (user && shareGameId) {
+        try {
+          setIsCheckingOwnership(true);
+          const response = await checkGameOwnership(shareGameId);
+          if (
+            response.success &&
+            response.data &&
+            typeof response.data === "object"
+          ) {
+            const data = response.data as { isOwner: boolean };
+            setIsGameOwner(data.isOwner);
+          }
+        } catch (error) {
+          console.error("Failed to check game ownership:", error);
+          setIsGameOwner(false);
+        } finally {
+          setIsCheckingOwnership(false);
+        }
+      }
+    };
+
+    checkOwnership();
+  }, [user, shareGameId]);
+
+  // Check if game is already imported (this would need a separate API endpoint)
+  useEffect(() => {
+    const checkIfImported = async () => {
+      if (user && shareGameId && !isGameOwner) {
+        // For now, we'll assume it's not imported
+        // In a real implementation, you'd call an API to check if the game exists in user's library
+        setIsGameImported(false);
+      }
+    };
+
+    checkIfImported();
+  }, [user, shareGameId, isGameOwner]);
 
   // Video player setup
   useEffect(() => {
@@ -543,7 +592,42 @@ const GameComponent = () => {
   };
 
   const handleSignupRedirect = () => {
-    window.location.href = "/login";
+    // Pass the game ID to the signup page
+    if (shareGameId) {
+      window.location.href = `/signup?sharedGameId=${shareGameId}`;
+    } else {
+      window.location.href = "/signup";
+    }
+  };
+
+  const handleImportGame = async () => {
+    if (!user || !shareGameId) {
+      toast.error("Please log in to import games");
+      return;
+    }
+
+    if (isGameImported) {
+      toast.info("Game is already in your library!");
+      return;
+    }
+
+    try {
+      setIsCheckingImport(true);
+      toast.loading("Importing game to your library...");
+      await addSharedGameToLibrary(shareGameId, user._id || "");
+      toast.dismiss();
+      toast.success(
+        "Game imported to your library! Check your 'sharedSeason' folder."
+      );
+      setIsGameImported(true);
+      setShowDownloadModal(false);
+    } catch (error) {
+      console.error("Failed to import game:", error);
+      toast.dismiss();
+      toast.error("Failed to import game. Please try again.");
+    } finally {
+      setIsCheckingImport(false);
+    }
   };
 
   if (isLoading) {
@@ -899,16 +983,98 @@ const GameComponent = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="text-center space-y-4">
+            {/* User Status Header */}
+            {user && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm font-medium">
+                  👤 Logged in as: {user.name || user.email || "User"}
+                </p>
+                {isCheckingOwnership && (
+                  <p className="text-blue-600 text-xs mt-1">
+                    Checking game ownership...
+                  </p>
+                )}
+                {!isCheckingOwnership && isGameOwner && (
+                  <p className="text-green-600 text-xs mt-1">
+                    ✅ You own this game
+                  </p>
+                )}
+                {!isCheckingOwnership && !isGameOwner && isGameImported && (
+                  <p className="text-green-600 text-xs mt-1">
+                    📥 Game already imported to your library
+                  </p>
+                )}
+                {!isCheckingOwnership &&
+                  !isGameOwner &&
+                  !isGameImported &&
+                  user && (
+                    <p className="text-blue-600 text-xs mt-1">
+                      📥 Click import to add this game to your library
+                    </p>
+                  )}
+              </div>
+            )}
+
             <p className="text-gray-600 text-lg">
               For $100 have all these videos instantly in your library.
             </p>
             <div className="space-y-3">
-              <Button
-                onClick={handleSignupRedirect}
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
-              >
-                Sign Up Now!
-              </Button>
+              {!user ? (
+                // User not logged in - show signup button
+                <>
+                  <Button
+                    onClick={handleSignupRedirect}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+                  >
+                    Sign Up Now & Get This Game!
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Create an account and this game will be automatically added
+                    to your library!
+                  </p>
+                </>
+              ) : isCheckingOwnership ? (
+                // Checking ownership - show loading button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Checking...
+                </Button>
+              ) : isGameOwner ? (
+                // User owns the game - show owned button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Owned
+                </Button>
+              ) : isGameImported ? (
+                // Game already imported - show imported button
+                <Button
+                  disabled
+                  className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  ✓ Imported
+                </Button>
+              ) : (
+                // User logged in but doesn't own - show import button
+                <>
+                  <Button
+                    onClick={handleImportGame}
+                    disabled={isCheckingImport}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
+                  >
+                    {isCheckingImport
+                      ? "Importing..."
+                      : "Import Game to Library"}
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Add this game with all its videos to your library in the
+                    'sharedSeason' folder!
+                  </p>
+                </>
+              )}
               <Button
                 variant="outline"
                 className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"

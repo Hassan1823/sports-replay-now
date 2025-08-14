@@ -480,3 +480,53 @@ export const checkVideoOwnership = async (
     throw error;
   }
 };
+
+// Check if user owns a game
+export const checkGameOwnership = async (
+  gameId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/check-game-ownership/${gameId}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message || "Failed to check game ownership"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Check game ownership error:", error);
+    throw error;
+  }
+};
+
+// Add shared game to user's library
+export const addSharedGameToLibrary = async (
+  gameId: string,
+  userId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/add-shared-game-to-library`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId, userId }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message ||
+          "Failed to add shared game to library"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Add shared game to library error:", error);
+    throw error;
+  }
+};

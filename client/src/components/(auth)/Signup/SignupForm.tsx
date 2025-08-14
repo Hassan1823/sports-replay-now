@@ -1,7 +1,10 @@
 "use client";
 
 import { registerUser } from "@/app/api/auth/api";
-import { addSharedVideoToLibrary } from "@/app/api/peertube/api";
+import {
+  addSharedVideoToLibrary,
+  addSharedGameToLibrary,
+} from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +60,7 @@ export function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sharedVideoId = searchParams.get("sharedVideoId");
+  const sharedGameId = searchParams.get("sharedGameId");
   const { login, token } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -109,7 +113,7 @@ export function SignUpForm() {
         if (sharedVideoId) {
           try {
             toast.loading("Adding shared video to your library...");
-            await addSharedVideoToLibrary(sharedVideoId, data.user._id);
+            await addSharedVideoToLibrary(sharedVideoId, data.user._id || "");
             toast.dismiss();
             toast.success(
               "Shared video added to your library! Check your 'sharedSeason' folder."
@@ -119,6 +123,24 @@ export function SignUpForm() {
             toast.dismiss();
             toast.error(
               "Account created but failed to add video to library. You can manually add it later."
+            );
+          }
+        }
+
+        // If there's a shared game ID, add it to the user's library
+        if (sharedGameId) {
+          try {
+            toast.loading("Adding shared game to your library...");
+            await addSharedGameToLibrary(sharedGameId, data.user._id || "");
+            toast.dismiss();
+            toast.success(
+              "Shared game added to your library! Check your 'sharedSeason' folder."
+            );
+          } catch (error) {
+            console.error("Failed to add shared game to library:", error);
+            toast.dismiss();
+            toast.error(
+              "Account created but failed to add game to library. You can manually add it later."
             );
           }
         }
@@ -148,14 +170,21 @@ export function SignUpForm() {
     <div className="flex items-center justify-center min-h-[70vh] mb-[10vh]">
       <Card className="w-full max-w-[95%] md:max-w-[70%] lg:max-w-[50%] border-none shadow-none">
         <CardHeader>
-          {sharedVideoId && (
+          {(sharedVideoId || sharedGameId) && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
               <p className="text-green-800 text-sm font-medium">
-                🎥 You're signing up to get access to a shared video!
+                {sharedVideoId && sharedGameId
+                  ? "🎥🎮 You're signing up to get access to shared content!"
+                  : sharedVideoId
+                  ? "🎥 You're signing up to get access to a shared video!"
+                  : "🎮 You're signing up to get access to a shared game!"}
               </p>
               <p className="text-green-600 text-xs mt-1">
-                This video will be automatically added to your library after
-                signup.
+                {sharedVideoId && sharedGameId
+                  ? "Both the video and game will be automatically added to your library after signup."
+                  : sharedVideoId
+                  ? "This video will be automatically added to your library after signup."
+                  : "This game will be automatically added to your library after signup."}
               </p>
             </div>
           )}
