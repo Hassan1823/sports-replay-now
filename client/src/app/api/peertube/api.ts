@@ -530,3 +530,53 @@ export const addSharedGameToLibrary = async (
     throw error;
   }
 };
+
+// Check if user owns a season
+export const checkSeasonOwnership = async (
+  seasonId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/check-season-ownership/${seasonId}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message || "Failed to check season ownership"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Check season ownership error:", error);
+    throw error;
+  }
+};
+
+// Add shared season to user's library
+export const addSharedSeasonToLibrary = async (
+  seasonId: string,
+  userId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/add-shared-season-to-library`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seasonId, userId }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message ||
+          "Failed to add shared season to library"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Add shared season to library error:", error);
+    throw error;
+  }
+};

@@ -4,6 +4,7 @@ import { registerUser } from "@/app/api/auth/api";
 import {
   addSharedVideoToLibrary,
   addSharedGameToLibrary,
+  addSharedSeasonToLibrary,
 } from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ export function SignUpForm() {
   const searchParams = useSearchParams();
   const sharedVideoId = searchParams.get("sharedVideoId");
   const sharedGameId = searchParams.get("sharedGameId");
+  const sharedSeasonId = searchParams.get("sharedSeasonId");
   const { login, token } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -145,6 +147,24 @@ export function SignUpForm() {
           }
         }
 
+        // If there's a shared season ID, add it to the user's library
+        if (sharedSeasonId) {
+          try {
+            toast.loading("Adding shared season to your library...");
+            await addSharedSeasonToLibrary(sharedSeasonId, data.user._id || "");
+            toast.dismiss();
+            toast.success(
+              "Shared season added to your library! Check your 'sharedSeason' folder."
+            );
+          } catch (error) {
+            console.error("Failed to add shared season to library:", error);
+            toast.dismiss();
+            toast.error(
+              "Account created but failed to add season to library. You can manually add it later."
+            );
+          }
+        }
+
         router.push("/");
       } else {
         toast.error(
@@ -170,21 +190,37 @@ export function SignUpForm() {
     <div className="flex items-center justify-center min-h-[70vh] mb-[10vh]">
       <Card className="w-full max-w-[95%] md:max-w-[70%] lg:max-w-[50%] border-none shadow-none">
         <CardHeader>
-          {(sharedVideoId || sharedGameId) && (
+          {(sharedVideoId || sharedGameId || sharedSeasonId) && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
               <p className="text-green-800 text-sm font-medium">
-                {sharedVideoId && sharedGameId
+                {sharedVideoId && sharedGameId && sharedSeasonId
+                  ? "🎥🎮🏆 You're signing up to get access to shared content!"
+                  : sharedVideoId && sharedGameId
                   ? "🎥🎮 You're signing up to get access to shared content!"
+                  : sharedVideoId && sharedSeasonId
+                  ? "🎥🏆 You're signing up to get access to shared content!"
+                  : sharedGameId && sharedSeasonId
+                  ? "🎮🏆 You're signing up to get access to shared content!"
                   : sharedVideoId
                   ? "🎥 You're signing up to get access to a shared video!"
-                  : "🎮 You're signing up to get access to a shared game!"}
+                  : sharedGameId
+                  ? "🎮 You're signing up to get access to a shared game!"
+                  : "🏆 You're signing up to get access to a shared season!"}
               </p>
               <p className="text-green-600 text-xs mt-1">
-                {sharedVideoId && sharedGameId
+                {sharedVideoId && sharedGameId && sharedSeasonId
+                  ? "All content will be automatically added to your library after signup."
+                  : sharedVideoId && sharedGameId
                   ? "Both the video and game will be automatically added to your library after signup."
+                  : sharedVideoId && sharedSeasonId
+                  ? "Both the video and season will be automatically added to your library after signup."
+                  : sharedGameId && sharedSeasonId
+                  ? "Both the game and season will be automatically added to your library after signup."
                   : sharedVideoId
                   ? "This video will be automatically added to your library after signup."
-                  : "This game will be automatically added to your library after signup."}
+                  : sharedGameId
+                  ? "This game will be automatically added to your library after signup."
+                  : "This season will be automatically added to your library after signup."}
               </p>
             </div>
           )}

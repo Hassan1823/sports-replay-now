@@ -21,6 +21,8 @@ import {
   checkVideoOwnership,
   checkGameOwnership,
   addSharedGameToLibrary,
+  checkSeasonOwnership,
+  addSharedSeasonToLibrary,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -92,5 +94,15 @@ router.get("/check-game-ownership/:gameId", verifyJWT, checkGameOwnership);
 
 // Add shared game to user's library
 router.post("/add-shared-game-to-library", addSharedGameToLibrary);
+
+// Check if user owns a season
+router.get(
+  "/check-season-ownership/:seasonId",
+  verifyJWT,
+  checkSeasonOwnership
+);
+
+// Add shared season to user's library
+router.post("/add-shared-season-to-library", addSharedSeasonToLibrary);
 
 export default router;

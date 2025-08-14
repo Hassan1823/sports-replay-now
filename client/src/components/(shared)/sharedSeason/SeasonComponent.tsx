@@ -16,6 +16,8 @@ import {
   getGamesForSeason,
   getVideoDetails,
   getVideosForGame,
+  checkSeasonOwnership,
+  addSharedSeasonToLibrary,
 } from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
@@ -100,6 +102,10 @@ const SeasonComponent = () => {
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [showAllVideos, setShowAllVideos] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [isSeasonOwner, setIsSeasonOwner] = useState(false);
+  const [isCheckingOwnership, setIsCheckingOwnership] = useState(false);
+  const [isSeasonImported, setIsSeasonImported] = useState(false);
+  const [isCheckingImport, setIsCheckingImport] = useState(false);
 
   const hlsInstance = useRef<Hls | null>(null);
 
@@ -352,6 +358,46 @@ const SeasonComponent = () => {
       fetchSeasonDetails(shareSeasonId);
     }
   }, [shareSeasonId]);
+
+  // Check season ownership when user is logged in
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (user && shareSeasonId) {
+        try {
+          setIsCheckingOwnership(true);
+          const response = await checkSeasonOwnership(shareSeasonId);
+          if (
+            response.success &&
+            response.data &&
+            typeof response.data === "object"
+          ) {
+            const data = response.data as { isOwner: boolean };
+            setIsSeasonOwner(data.isOwner);
+          }
+        } catch (error) {
+          console.error("Failed to check season ownership:", error);
+          setIsSeasonOwner(false);
+        } finally {
+          setIsCheckingOwnership(false);
+        }
+      }
+    };
+
+    checkOwnership();
+  }, [user, shareSeasonId]);
+
+  // Check if season is already imported (this would need a separate API endpoint)
+  useEffect(() => {
+    const checkIfImported = async () => {
+      if (user && shareSeasonId && !isSeasonOwner) {
+        // For now, we'll assume it's not imported
+        // In a real implementation, you'd call an API to check if the season exists in user's library
+        setIsSeasonImported(false);
+      }
+    };
+
+    checkIfImported();
+  }, [user, shareSeasonId, isSeasonOwner]);
 
   // Video player setup
   useEffect(() => {
@@ -650,7 +696,42 @@ const SeasonComponent = () => {
   };
 
   const handleSignupRedirect = () => {
-    window.location.href = "/login";
+    // Pass the season ID to the signup page
+    if (shareSeasonId) {
+      window.location.href = `/signup?sharedSeasonId=${shareSeasonId}`;
+    } else {
+      window.location.href = "/signup";
+    }
+  };
+
+  const handleImportSeason = async () => {
+    if (!user || !shareSeasonId) {
+      toast.error("Please log in to import seasons");
+      return;
+    }
+
+    if (isSeasonImported) {
+      toast.info("Season is already in your library!");
+      return;
+    }
+
+    try {
+      setIsCheckingImport(true);
+      toast.loading("Importing season to your library...");
+      await addSharedSeasonToLibrary(shareSeasonId, user._id || "");
+      toast.dismiss();
+      toast.success(
+        "Season imported to your library! Check your 'sharedSeason' folder."
+      );
+      setIsSeasonImported(true);
+      setShowDownloadModal(false);
+    } catch (error) {
+      console.error("Failed to import season:", error);
+      toast.dismiss();
+      toast.error("Failed to import season. Please try again.");
+    } finally {
+      setIsCheckingImport(false);
+    }
   };
 
   if (isLoading) {
@@ -1117,16 +1198,98 @@ const SeasonComponent = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="text-center space-y-4">
+            {/* User Status Header */}
+            {user && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm font-medium">
+                  👤 Logged in as: {user.name || user.email || "User"}
+                </p>
+                {isCheckingOwnership && (
+                  <p className="text-blue-600 text-xs mt-1">
+                    Checking season ownership...
+                  </p>
+                )}
+                {!isCheckingOwnership && isSeasonOwner && (
+                  <p className="text-green-600 text-xs mt-1">
+                    ✅ You own this season
+                  </p>
+                )}
+                {!isCheckingOwnership && !isSeasonOwner && isSeasonImported && (
+                  <p className="text-green-600 text-xs mt-1">
+                    📥 Season already imported to your library
+                  </p>
+                )}
+                {!isCheckingOwnership &&
+                  !isSeasonOwner &&
+                  !isSeasonImported &&
+                  user && (
+                    <p className="text-blue-600 text-xs mt-1">
+                      📥 Click import to add this season to your library
+                    </p>
+                  )}
+              </div>
+            )}
+
             <p className="text-gray-600 text-lg">
               For $100 have all these videos instantly in your library.
             </p>
             <div className="space-y-3">
-              <Button
-                onClick={handleSignupRedirect}
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
-              >
-                Sign Up Now!
-              </Button>
+              {!user ? (
+                // User not logged in - show signup button
+                <>
+                  <Button
+                    onClick={handleSignupRedirect}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+                  >
+                    Sign Up Now & Get This Season!
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Create an account and this season will be automatically
+                    added to your library!
+                  </p>
+                </>
+              ) : isCheckingOwnership ? (
+                // Checking ownership - show loading button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Checking...
+                </Button>
+              ) : isSeasonOwner ? (
+                // User owns the season - show owned button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Owned
+                </Button>
+              ) : isSeasonImported ? (
+                // Season already imported - show imported button
+                <Button
+                  disabled
+                  className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  ✓ Imported
+                </Button>
+              ) : (
+                // User logged in but doesn't own - show import button
+                <>
+                  <Button
+                    onClick={handleImportSeason}
+                    disabled={isCheckingImport}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
+                  >
+                    {isCheckingImport
+                      ? "Importing..."
+                      : "Import Season to Library"}
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Add this season with all its games and videos to your
+                    library in the 'sharedSeason' folder!
+                  </p>
+                </>
+              )}
               <Button
                 variant="outline"
                 className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"

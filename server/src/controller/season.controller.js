@@ -1793,3 +1793,179 @@ export const addSharedGameToLibrary = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Check if user owns a season
+export const checkSeasonOwnership = asyncHandler(async (req, res) => {
+  const { seasonId } = req.params;
+  const userId = req.user?._id; // Get user ID from auth middleware
+
+  if (!seasonId) {
+    return res.status(400).json({
+      success: false,
+      message: "Season ID is required",
+      isOwner: false,
+    });
+  }
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "User not authenticated",
+      isOwner: false,
+    });
+  }
+
+  try {
+    // Find the season
+    const season = await Season.findById(seasonId);
+    if (!season) {
+      return res.status(404).json({
+        success: false,
+        message: "Season not found",
+        isOwner: false,
+      });
+    }
+
+    // Check if the user owns this season
+    const isOwner = season.userId.toString() === userId.toString();
+
+    return res.status(200).json({
+      success: true,
+      message: "Season ownership checked successfully",
+      data: {
+        isOwner,
+        seasonId: season._id,
+        userId: season.userId,
+      },
+    });
+  } catch (error) {
+    console.error("Check season ownership error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check season ownership",
+      isOwner: false,
+    });
+  }
+});
+
+// Add shared season to user's library
+export const addSharedSeasonToLibrary = asyncHandler(async (req, res) => {
+  const { seasonId, userId } = req.body;
+
+  if (!seasonId || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Season ID and user ID are required",
+    });
+  }
+
+  try {
+    // Find the shared season
+    const sharedSeason = await Season.findById(seasonId).populate({
+      path: "games",
+      populate: {
+        path: "videos",
+      },
+    });
+
+    if (!sharedSeason) {
+      return res.status(404).json({
+        success: false,
+        message: "Shared season not found",
+      });
+    }
+
+    // Check if user already has a "sharedSeason" folder
+    let userSharedSeason = await Season.findOne({
+      userId: userId,
+      name: "sharedSeason",
+    });
+
+    // If no sharedSeason exists, create one
+    if (!userSharedSeason) {
+      userSharedSeason = await Season.create({
+        name: "sharedSeason",
+        userId: userId,
+      });
+    }
+
+    // Create a new season for the user (copy of the shared season)
+    const userSeason = await Season.create({
+      name: sharedSeason.name,
+      userId: userId,
+      description: sharedSeason.description,
+    });
+
+    // Copy all games and videos from the shared season
+    if (sharedSeason.games && sharedSeason.games.length > 0) {
+      for (const sharedGame of sharedSeason.games) {
+        // Create a new game for the user
+        const userGame = await Game.create({
+          name: sharedGame.name,
+          seasonId: userSeason._id,
+          description: sharedGame.description,
+        });
+
+        // Add the game to the user's season
+        await Season.findByIdAndUpdate(userSeason._id, {
+          $push: { games: userGame._id },
+        });
+
+        // Copy all videos from the shared game to the user's game
+        if (sharedGame.videos && sharedGame.videos.length > 0) {
+          for (const sharedVideo of sharedGame.videos) {
+            // Create a copy of the video for the user
+            const userVideo = await Video.create({
+              userId: userId,
+              peertubeVideoId: sharedVideo.peertubeVideoId,
+              videoShareLink: sharedVideo.videoShareLink,
+              embedIframeUrl: sharedVideo.embedIframeUrl,
+              videoDuration: sharedVideo.videoDuration,
+              videoChannel: sharedVideo.videoChannel,
+              videoThumbnail: sharedVideo.videoThumbnail,
+              fileUrl: sharedVideo.fileUrl,
+              peertubeChannelId: sharedVideo.peertubeChannelId,
+              title: sharedVideo.title,
+              description: sharedVideo.description,
+              filePath: sharedVideo.filePath,
+              duration: sharedVideo.duration,
+              thumbnailPath: sharedVideo.thumbnailPath,
+              privacy: sharedVideo.privacy,
+              category: sharedVideo.category,
+              license: sharedVideo.license,
+              muteVideo: sharedVideo.muteVideo,
+              tags: sharedVideo.tags,
+              uploadStatus: sharedVideo.uploadStatus,
+            });
+
+            // Add the video to the user's game
+            await Game.findByIdAndUpdate(userGame._id, {
+              $push: { videos: userVideo._id },
+            });
+          }
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Shared season added to library successfully",
+      data: {
+        seasonId: userSeason._id,
+        gameCount: sharedSeason.games ? sharedSeason.games.length : 0,
+        totalVideoCount: sharedSeason.games
+          ? sharedSeason.games.reduce(
+              (sum, game) => sum + (game.videos ? game.videos.length : 0),
+              0
+            )
+          : 0,
+      },
+    });
+  } catch (error) {
+    console.error("Add shared season to library error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add shared season to library",
+    });
+  }
+});
