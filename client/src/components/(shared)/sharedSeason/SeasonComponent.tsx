@@ -495,6 +495,160 @@ const SeasonComponent = () => {
     }
   };
 
+  const handleDownloadAllVideos = async () => {
+    if (!selectedGame || selectedGame.videos.length === 0) {
+      toast.error("No videos available to download");
+      return;
+    }
+
+    try {
+      // Show loading toast for the batch download
+      const toastId = toast.loading(
+        `Preparing to download ${selectedGame.videos.length} videos...`
+      );
+
+      // Close the modal
+      setShowDownloadModal(false);
+
+      // Download each video one by one
+      for (let i = 0; i < selectedGame.videos.length; i++) {
+        const video = selectedGame.videos[i];
+
+        try {
+          // Get video details for this specific video
+          const res = await getVideoDetails(video._id || "");
+
+          if (res.success && res.data && typeof res.data === "object") {
+            const videoData = res.data as any;
+            const fileUrl = videoData.fileUrl || "";
+            const videoName =
+              videoData.title || videoData.name || `video_${i + 1}`;
+
+            if (fileUrl) {
+              // Update toast to show progress
+              toast.loading(
+                `Downloading ${i + 1}/${
+                  selectedGame.videos.length
+                }: ${videoName}`,
+                { id: toastId }
+              );
+
+              // Use fetch with blob to ensure download behavior
+              // This forces the browser to download instead of playing
+              const response = await fetch(fileUrl);
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+              }
+
+              const blob = await response.blob();
+              const blobUrl = window.URL.createObjectURL(blob);
+
+              // Create download link with blob URL
+              const link = document.createElement("a");
+              link.href = blobUrl;
+              link.download = `${videoName}.mp4`;
+
+              // Trigger download
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+
+              // Clean up the blob URL after a short delay
+              setTimeout(() => {
+                window.URL.revokeObjectURL(blobUrl);
+              }, 1000);
+
+              // Small delay between downloads to prevent browser blocking
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+        } catch (error) {
+          console.error(`Error downloading video ${i + 1}:`, error);
+          // Continue with next video even if one fails
+        }
+      }
+
+      // Show completion message
+      toast.dismiss(toastId);
+      toast.success(
+        `Started downloading ${selectedGame.videos.length} videos! Check your downloads folder.`
+      );
+    } catch (error) {
+      console.error("Error in batch download:", error);
+      toast.error("Some videos failed to download. Please try again.");
+    }
+  };
+
+  // Function to download a specific video directly
+  const handleDownloadSpecificVideo = async (video: Video) => {
+    try {
+      // Show loading toast that will persist until download completes
+      const toastId = toast.loading(
+        `Preparing download for ${video.title || video.name || "video"}...`
+      );
+
+      // First, get the video details for this specific video
+      const res = await getVideoDetails(video._id || "");
+
+      if (res.success && res.data && typeof res.data === "object") {
+        const videoData = res.data as any;
+        const fileUrl = videoData.fileUrl || "";
+        const videoName = videoData.title || videoData.name || "video";
+
+        if (fileUrl) {
+          // Update toast to show download progress
+          toast.loading(`Downloading ${videoName}...`, { id: toastId });
+
+          // Use fetch with blob to ensure download behavior
+          const response = await fetch(fileUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          const blobUrl = window.URL.createObjectURL(blob);
+
+          // Create download link with blob URL
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = `${videoName}.mp4`;
+
+          // Trigger download
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Clean up the blob URL after a short delay
+          setTimeout(() => {
+            window.URL.revokeObjectURL(blobUrl);
+          }, 1000);
+
+          // Dismiss the loading toast and show success message
+          toast.dismiss(toastId);
+          toast.success(`Download started for ${videoName}`);
+        } else {
+          // Dismiss loading toast and show error
+          toast.dismiss(toastId);
+          toast.error("No download URL available for this video");
+          // Fallback to modal if no direct download URL
+          setShowDownloadModal(true);
+        }
+      } else {
+        // Dismiss loading toast and show error
+        toast.dismiss(toastId);
+        toast.error("Failed to get video details");
+        // Fallback to modal if video details fetch fails
+        setShowDownloadModal(true);
+      }
+    } catch (error) {
+      console.error("Download error:", error);
+      // Dismiss loading toast and show error
+      toast.error("Download failed. Please try again.");
+      // Fallback to modal if download fails
+      setShowDownloadModal(true);
+    }
+  };
+
   const handleSignupRedirect = () => {
     window.location.href = "/login";
   };
@@ -716,7 +870,7 @@ const SeasonComponent = () => {
                   <Card className="px-0 py-2 my-1 mt-4 border-0">
                     <CardContent className="px-3 py-3">
                       <Button
-                        onClick={handleDownloadClick}
+                        onClick={() => setShowDownloadModal(true)}
                         className="w-full bg-green-600 hover:bg-green-700 text-white"
                       >
                         <Download className="w-4 h-4 mr-2" />
@@ -896,9 +1050,15 @@ const SeasonComponent = () => {
             {/* Right sidebar: Library list */}
             <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
               <Card className="border px-2 bg-[#858585] gap-1">
-                <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
-                  {selectedGame ? selectedGame.name : "Library"}
-                </h2>
+                <div className="flex items-center justify-between p-2">
+                  <h2 className="text-lg font-semibold bg-[#858585]">
+                    {selectedGame ? selectedGame.name : "Library"}
+                  </h2>
+                  <Download
+                    className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
+                    onClick={() => setShowDownloadModal(true)}
+                  />
+                </div>
                 <CardContent className="p-0">
                   {!selectedGame ? (
                     // Skeleton loading for video list when no game is selected
@@ -945,8 +1105,8 @@ const SeasonComponent = () => {
                               className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation(); // Prevent video selection
-                                // Download the video directly without switching
-                                handleDownloadClick();
+                                // Download the specific video that was clicked
+                                handleDownloadSpecificVideo(video);
                               }}
                             />
                           </div>
@@ -971,14 +1131,23 @@ const SeasonComponent = () => {
           </DialogHeader>
           <div className="text-center space-y-4">
             <p className="text-gray-600 text-lg">
-              Save instantly with us for $100 and have all these videos
+              For $100 have all these videos instantly in your library.
             </p>
-            <Button
-              onClick={handleSignupRedirect}
-              className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
-            >
-              Sign Up Now!
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={handleSignupRedirect}
+                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+              >
+                Sign Up Now!
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"
+                onClick={handleDownloadAllVideos}
+              >
+                Download All
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
