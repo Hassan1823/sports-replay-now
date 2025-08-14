@@ -248,35 +248,109 @@ const ShareVideoPage = () => {
   const handleDownloadClick = async () => {
     if (videoDetails?.fileUrl) {
       try {
-        // Fetch the video data as a blob
+        // Show loading toast that will persist until download completes
+        const toastId = toast.loading(
+          `Preparing download for ${videoDetails.name || "video"}...`
+        );
+
+        // Use fetch with blob to ensure download behavior
+        // This forces the browser to download instead of playing
         const response = await fetch(videoDetails.fileUrl);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const blob = await response.blob();
-
-        // Create a blob URL and download link
         const blobUrl = window.URL.createObjectURL(blob);
+
+        // Create download link with blob URL
         const link = document.createElement("a");
         link.href = blobUrl;
         link.download = `${videoDetails.name || "video"}.mp4`;
 
-        // Trigger download
+        // Add the link to the DOM temporarily
         document.body.appendChild(link);
+
+        // Trigger the click event
         link.click();
+
+        // Remove the link from DOM
         document.body.removeChild(link);
 
-        // Clean up the blob URL
-        window.URL.revokeObjectURL(blobUrl);
+        // Clean up the blob URL after a short delay
+        setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl);
+        }, 1000);
+
+        // Dismiss the loading toast and show success message
+        toast.dismiss(toastId);
+        toast.success(`Download started for ${videoDetails.name || "video"}`);
       } catch (error) {
         console.error("Download error:", error);
+        // Dismiss loading toast and show error
+        toast.error("Download failed. Please try again.");
         // Fallback to modal if download fails
         setShowDownloadModal(true);
       }
     } else {
       // Fallback to modal if no direct download URL
       setShowDownloadModal(true);
+    }
+  };
+
+  // Function to download all videos (for shared video, this downloads the single video)
+  const handleDownloadAllVideos = async () => {
+    if (!videoDetails?.fileUrl) {
+      toast.error("No video available to download");
+      return;
+    }
+
+    try {
+      // Show loading toast for the download
+      const toastId = toast.loading(`Preparing to download video...`);
+
+      // Close the modal
+      setShowDownloadModal(false);
+
+      // Update toast to show download progress
+      toast.loading(`Downloading ${videoDetails.name || "video"}...`, {
+        id: toastId,
+      });
+
+      // Use fetch with blob to ensure download behavior
+      const response = await fetch(videoDetails.fileUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Create download link with blob URL
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `${videoDetails.name || "video"}.mp4`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL after a short delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
+
+      // Show completion message
+      toast.dismiss(toastId);
+      toast.success(
+        `Download started for ${
+          videoDetails.name || "video"
+        }! Check your downloads folder.`
+      );
+    } catch (error) {
+      console.error("Error in download:", error);
+      toast.error("Download failed. Please try again.");
     }
   };
 
@@ -386,22 +460,6 @@ const ShareVideoPage = () => {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Download Button - Only show if user is not logged in */}
-              {!user && (
-                <Card className="px-0 py-2 my-1 mt-4 border-0">
-                  <CardContent className="p-3">
-                    <Button
-                      onClick={handleDownloadClick}
-                      size={"default"}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download Video
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
             </div>
 
             {/* Middle: Video player and chapters */}
@@ -510,9 +568,13 @@ const ShareVideoPage = () => {
             {/* Right sidebar: Video name */}
             <div className="lg:w-1/4 lg:h-full w-full h-auto border-l py-4 px-2 lg:overflow-y-auto bg-transparent">
               <Card className="border px-2 bg-[#858585] gap-1">
-                <h2 className="text-lg font-semibold mb-0 bg-[#858585]">
-                  Video
-                </h2>
+                <div className="flex items-center justify-between p-2">
+                  <h2 className="text-lg font-semibold bg-[#858585]">Video</h2>
+                  <Download
+                    className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
+                    onClick={() => setShowDownloadModal(true)}
+                  />
+                </div>
                 <CardContent className="p-0">
                   {!videoDetails ? (
                     // Skeleton loading for video info
@@ -562,14 +624,23 @@ const ShareVideoPage = () => {
           </DialogHeader>
           <div className="text-center space-y-4">
             <p className="text-gray-600 text-lg">
-              Save instantly with us for $100 and have all these videos
+              For $100 have all these videos instantly in your library.
             </p>
-            <Button
-              onClick={handleSignupRedirect}
-              className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
-            >
-              Sign Up Now!
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={handleSignupRedirect}
+                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+              >
+                Sign Up Now!
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"
+                onClick={handleDownloadAllVideos}
+              >
+                Download
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
