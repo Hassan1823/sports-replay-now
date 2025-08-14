@@ -440,8 +440,59 @@ const SeasonComponent = () => {
     };
   }, [selectedVideoDetails]);
 
-  const handleDownloadClick = () => {
-    setShowDownloadModal(true);
+  const handleDownloadClick = async () => {
+    if (selectedVideoDetails?.fileUrl) {
+      try {
+        // Show loading toast that will persist until download completes
+        const toastId = toast.loading(
+          `Preparing download for ${selectedVideoDetails.name || "video"}...`
+        );
+
+        // Use fetch with blob to ensure download behavior
+        // This forces the browser to download instead of playing
+        const response = await fetch(selectedVideoDetails.fileUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        // Create download link with blob URL
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${selectedVideoDetails.name || "video"}.mp4`;
+
+        // Add the link to the DOM temporarily
+        document.body.appendChild(link);
+
+        // Trigger the click event
+        link.click();
+
+        // Remove the link from DOM
+        document.body.removeChild(link);
+
+        // Clean up the blob URL after a short delay
+        setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl);
+        }, 1000);
+
+        // Dismiss the loading toast and show success message
+        toast.dismiss(toastId);
+        toast.success(
+          `Download started for ${selectedVideoDetails.name || "video"}`
+        );
+      } catch (error) {
+        console.error("Download error:", error);
+        // Dismiss loading toast and show error
+        toast.error("Download failed. Please try again.");
+        // Fallback to modal if download fails
+        setShowDownloadModal(true);
+      }
+    } else {
+      // Fallback to modal if no direct download URL
+      setShowDownloadModal(true);
+    }
   };
 
   const handleSignupRedirect = () => {
@@ -661,20 +712,18 @@ const SeasonComponent = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Download Button - Only show if user is not logged in */}
-                  {!user && (
-                    <Card className="px-0 py-2 my-1 mt-4 border-0">
-                      <CardContent className="px-3 py-3">
-                        <Button
-                          onClick={handleDownloadClick}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download Video
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  )}
+                  {/* Download Button - Show for all users */}
+                  <Card className="px-0 py-2 my-1 mt-4 border-0">
+                    <CardContent className="px-3 py-3">
+                      <Button
+                        onClick={handleDownloadClick}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Video
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </>
               )}
             </div>
@@ -891,9 +940,16 @@ const SeasonComponent = () => {
                               {video.title || "no title"}
                             </span>
                           </div>
-                          <span className="text-xs text-gray-700">
-                            {formatDuration(video.videoDuration || 0)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <Download
+                              className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent video selection
+                                // Download the video directly without switching
+                                handleDownloadClick();
+                              }}
+                            />
+                          </div>
                         </li>
                       ))}
                     </ol>
