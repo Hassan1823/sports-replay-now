@@ -865,19 +865,6 @@ const SeasonComponent = () => {
                       </div>
                     </CardContent>
                   </Card>
-
-                  {/* Download Button - Show for all users */}
-                  <Card className="px-0 py-2 my-1 mt-4 border-0">
-                    <CardContent className="px-3 py-3">
-                      <Button
-                        onClick={() => setShowDownloadModal(true)}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download Video
-                      </Button>
-                    </CardContent>
-                  </Card>
                 </>
               )}
             </div>
