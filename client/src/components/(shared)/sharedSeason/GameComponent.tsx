@@ -984,36 +984,6 @@ const GameComponent = () => {
           </DialogHeader>
           <div className="text-center space-y-4">
             {/* User Status Header */}
-            {user && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-sm font-medium">
-                  👤 Logged in as: {user.name || user.email || "User"}
-                </p>
-                {isCheckingOwnership && (
-                  <p className="text-blue-600 text-xs mt-1">
-                    Checking game ownership...
-                  </p>
-                )}
-                {!isCheckingOwnership && isGameOwner && (
-                  <p className="text-green-600 text-xs mt-1">
-                    ✅ You own this game
-                  </p>
-                )}
-                {!isCheckingOwnership && !isGameOwner && isGameImported && (
-                  <p className="text-green-600 text-xs mt-1">
-                    📥 Game already imported to your library
-                  </p>
-                )}
-                {!isCheckingOwnership &&
-                  !isGameOwner &&
-                  !isGameImported &&
-                  user && (
-                    <p className="text-blue-600 text-xs mt-1">
-                      📥 Click import to add this game to your library
-                    </p>
-                  )}
-              </div>
-            )}
 
             <p className="text-gray-600 text-lg">
               For $100 have all these videos instantly in your library.
@@ -1026,12 +996,8 @@ const GameComponent = () => {
                     onClick={handleSignupRedirect}
                     className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
                   >
-                    Sign Up Now & Get This Game!
+                    Sign Up Now
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Create an account and this game will be automatically added
-                    to your library!
-                  </p>
                 </>
               ) : isCheckingOwnership ? (
                 // Checking ownership - show loading button
@@ -1063,16 +1029,12 @@ const GameComponent = () => {
                   <Button
                     onClick={handleImportGame}
                     disabled={isCheckingImport}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
                   >
                     {isCheckingImport
                       ? "Importing..."
                       : "Import Game to Library"}
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Add this game with all its videos to your library in the
-                    'sharedSeason' folder!
-                  </p>
                 </>
               )}
               <Button

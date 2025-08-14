@@ -708,36 +708,6 @@ const ShareVideoPage = () => {
           </DialogHeader>
           <div className="text-center space-y-4">
             {/* User Status Header */}
-            {user && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-sm font-medium">
-                  👤 Logged in as: {user.name || user.email || "User"}
-                </p>
-                {isCheckingOwnership && (
-                  <p className="text-blue-600 text-xs mt-1">
-                    Checking video ownership...
-                  </p>
-                )}
-                {!isCheckingOwnership && isVideoOwner && (
-                  <p className="text-green-600 text-xs mt-1">
-                    ✅ You own this video
-                  </p>
-                )}
-                {!isCheckingOwnership && !isVideoOwner && isVideoImported && (
-                  <p className="text-green-600 text-xs mt-1">
-                    📥 Video already imported to your library
-                  </p>
-                )}
-                {!isCheckingOwnership &&
-                  !isVideoOwner &&
-                  !isVideoImported &&
-                  user && (
-                    <p className="text-blue-600 text-xs mt-1">
-                      📥 Click import to add this video to your library
-                    </p>
-                  )}
-              </div>
-            )}
 
             <p className="text-gray-600 text-lg">
               For $100 have all these videos instantly in your library.
@@ -750,12 +720,8 @@ const ShareVideoPage = () => {
                     onClick={handleSignupRedirect}
                     className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
                   >
-                    Sign Up Now & Get This Video!
+                    Sign Up Now
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Create an account and this video will be automatically added
-                    to your library!
-                  </p>
                 </>
               ) : isCheckingOwnership ? (
                 // Checking ownership - show loading button
@@ -787,13 +753,10 @@ const ShareVideoPage = () => {
                   <Button
                     onClick={handleImportVideo}
                     disabled={isCheckingImport}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
                   >
                     {isCheckingImport ? "Importing..." : "Import to Library"}
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Add this video to your library in the 'sharedSeason' folder!
-                  </p>
                 </>
               )}
               <Button

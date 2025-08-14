@@ -1192,47 +1192,20 @@ const SeasonComponent = () => {
       {/* Download Modal */}
       <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center text-xl font-bold text-gray-800">
-              Why Download?
-            </DialogTitle>
-          </DialogHeader>
+          {!user && (
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl font-bold text-gray-800">
+                Why Download?
+              </DialogTitle>
+            </DialogHeader>
+          )}
           <div className="text-center space-y-4">
-            {/* User Status Header */}
-            {user && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-blue-800 text-sm font-medium">
-                  👤 Logged in as: {user.name || user.email || "User"}
-                </p>
-                {isCheckingOwnership && (
-                  <p className="text-blue-600 text-xs mt-1">
-                    Checking season ownership...
-                  </p>
-                )}
-                {!isCheckingOwnership && isSeasonOwner && (
-                  <p className="text-green-600 text-xs mt-1">
-                    ✅ You own this season
-                  </p>
-                )}
-                {!isCheckingOwnership && !isSeasonOwner && isSeasonImported && (
-                  <p className="text-green-600 text-xs mt-1">
-                    📥 Season already imported to your library
-                  </p>
-                )}
-                {!isCheckingOwnership &&
-                  !isSeasonOwner &&
-                  !isSeasonImported &&
-                  user && (
-                    <p className="text-blue-600 text-xs mt-1">
-                      📥 Click import to add this season to your library
-                    </p>
-                  )}
-              </div>
+            {!user && (
+              // User not logged in - show offer text
+              <p className="text-gray-600 text-lg">
+                For $100 have all these videos instantly in your library.
+              </p>
             )}
-
-            <p className="text-gray-600 text-lg">
-              For $100 have all these videos instantly in your library.
-            </p>
             <div className="space-y-3">
               {!user ? (
                 // User not logged in - show signup button
@@ -1241,12 +1214,8 @@ const SeasonComponent = () => {
                     onClick={handleSignupRedirect}
                     className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
                   >
-                    Sign Up Now & Get This Season!
+                    Sign Up Now
                   </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Create an account and this season will be automatically
-                    added to your library!
-                  </p>
                 </>
               ) : isCheckingOwnership ? (
                 // Checking ownership - show loading button
@@ -1274,21 +1243,15 @@ const SeasonComponent = () => {
                 </Button>
               ) : (
                 // User logged in but doesn't own - show import button
-                <>
-                  <Button
-                    onClick={handleImportSeason}
-                    disabled={isCheckingImport}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
-                  >
-                    {isCheckingImport
-                      ? "Importing..."
-                      : "Import Season to Library"}
-                  </Button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Add this season with all its games and videos to your
-                    library in the 'sharedSeason' folder!
-                  </p>
-                </>
+                <Button
+                  onClick={handleImportSeason}
+                  disabled={isCheckingImport}
+                  className="w-full mt-5 bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
+                >
+                  {isCheckingImport
+                    ? "Importing..."
+                    : "Import Season to Library"}
+                </Button>
               )}
               <Button
                 variant="outline"
