@@ -245,8 +245,39 @@ const ShareVideoPage = () => {
     return count.toString();
   };
 
-  const handleDownloadClick = () => {
-    setShowDownloadModal(true);
+  const handleDownloadClick = async () => {
+    if (videoDetails?.fileUrl) {
+      try {
+        // Fetch the video data as a blob
+        const response = await fetch(videoDetails.fileUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+
+        // Create a blob URL and download link
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${videoDetails.name || "video"}.mp4`;
+
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the blob URL
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Download error:", error);
+        // Fallback to modal if download fails
+        setShowDownloadModal(true);
+      }
+    } else {
+      // Fallback to modal if no direct download URL
+      setShowDownloadModal(true);
+    }
   };
 
   const handleSignupRedirect = () => {
@@ -359,12 +390,13 @@ const ShareVideoPage = () => {
               {/* Download Button - Only show if user is not logged in */}
               {!user && (
                 <Card className="px-0 py-2 my-1 mt-4 border-0">
-                  <CardContent className="px-3 py-3">
+                  <CardContent className="p-3">
                     <Button
                       onClick={handleDownloadClick}
+                      size={"default"}
                       className="w-full bg-green-600 hover:bg-green-700 text-white"
                     >
-                      <Download className="w-4 h-4 mr-2" />
+                      <Download className="w-4 h-4" />
                       Download Video
                     </Button>
                   </CardContent>
@@ -504,9 +536,12 @@ const ShareVideoPage = () => {
                             {videoDetails.name || "no title"}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-700">
-                          {formatDuration(videoDetails.duration)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <Download
+                            className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
+                            onClick={handleDownloadClick}
+                          />
+                        </div>
                       </li>
                     </ol>
                   )}
