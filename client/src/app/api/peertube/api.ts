@@ -457,3 +457,26 @@ export const addSharedVideoToLibrary = async (
     throw error;
   }
 };
+
+// Check if user owns a video
+export const checkVideoOwnership = async (
+  videoId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/check-video-ownership/${videoId}`,
+      {
+        method: "GET",
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message || "Failed to check video ownership"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Check video ownership error:", error);
+    throw error;
+  }
+};

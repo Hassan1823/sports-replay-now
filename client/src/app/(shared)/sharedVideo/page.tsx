@@ -11,7 +11,11 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getVideoDetails } from "@/app/api/peertube/api";
+import {
+  getVideoDetails,
+  addSharedVideoToLibrary,
+  checkVideoOwnership,
+} from "@/app/api/peertube/api";
 import Navbar from "@/components/Home/Navbar";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
@@ -54,6 +58,10 @@ const ShareVideoPage = () => {
   const [viewCount, setViewCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [isVideoOwner, setIsVideoOwner] = useState(false);
+  const [isCheckingOwnership, setIsCheckingOwnership] = useState(false);
+  const [isVideoImported, setIsVideoImported] = useState(false);
+  const [isCheckingImport, setIsCheckingImport] = useState(false);
 
   // * getting video details
   const fetchVideoDetails = async (shareVideoId: string) => {
@@ -133,6 +141,46 @@ const ShareVideoPage = () => {
       fetchVideoDetails(shareVideoId);
     }
   }, [shareVideoId]);
+
+  // Check video ownership when user is logged in
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (user && shareVideoId) {
+        try {
+          setIsCheckingOwnership(true);
+          const response = await checkVideoOwnership(shareVideoId);
+          if (
+            response.success &&
+            response.data &&
+            typeof response.data === "object"
+          ) {
+            const data = response.data as { isOwner: boolean };
+            setIsVideoOwner(data.isOwner);
+          }
+        } catch (error) {
+          console.error("Failed to check video ownership:", error);
+          setIsVideoOwner(false);
+        } finally {
+          setIsCheckingOwnership(false);
+        }
+      }
+    };
+
+    checkOwnership();
+  }, [user, shareVideoId]);
+
+  // Check if video is already imported (this would need a separate API endpoint)
+  useEffect(() => {
+    const checkIfImported = async () => {
+      if (user && shareVideoId && !isVideoOwner) {
+        // For now, we'll assume it's not imported
+        // In a real implementation, you'd call an API to check if the video exists in user's library
+        setIsVideoImported(false);
+      }
+    };
+
+    checkIfImported();
+  }, [user, shareVideoId, isVideoOwner]);
 
   useEffect(() => {
     if (!videoDetails || !videoRef.current) return;
@@ -351,6 +399,36 @@ const ShareVideoPage = () => {
     } catch (error) {
       console.error("Error in download:", error);
       toast.error("Download failed. Please try again.");
+    }
+  };
+
+  const handleImportVideo = async () => {
+    if (!user || !shareVideoId) {
+      toast.error("Please log in to import videos");
+      return;
+    }
+
+    if (isVideoImported) {
+      toast.info("Video is already in your library!");
+      return;
+    }
+
+    try {
+      setIsCheckingImport(true);
+      toast.loading("Importing video to your library...");
+      await addSharedVideoToLibrary(shareVideoId, user._id || "");
+      toast.dismiss();
+      toast.success(
+        "Video imported to your library! Check your 'sharedSeason' folder."
+      );
+      setIsVideoImported(true);
+      setShowDownloadModal(false);
+    } catch (error) {
+      console.error("Failed to import video:", error);
+      toast.dismiss();
+      toast.error("Failed to import video. Please try again.");
+    } finally {
+      setIsCheckingImport(false);
     }
   };
 
@@ -629,20 +707,95 @@ const ShareVideoPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="text-center space-y-4">
+            {/* User Status Header */}
+            {user && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-800 text-sm font-medium">
+                  👤 Logged in as: {user.name || user.email || "User"}
+                </p>
+                {isCheckingOwnership && (
+                  <p className="text-blue-600 text-xs mt-1">
+                    Checking video ownership...
+                  </p>
+                )}
+                {!isCheckingOwnership && isVideoOwner && (
+                  <p className="text-green-600 text-xs mt-1">
+                    ✅ You own this video
+                  </p>
+                )}
+                {!isCheckingOwnership && !isVideoOwner && isVideoImported && (
+                  <p className="text-green-600 text-xs mt-1">
+                    📥 Video already imported to your library
+                  </p>
+                )}
+                {!isCheckingOwnership &&
+                  !isVideoOwner &&
+                  !isVideoImported &&
+                  user && (
+                    <p className="text-blue-600 text-xs mt-1">
+                      📥 Click import to add this video to your library
+                    </p>
+                  )}
+              </div>
+            )}
+
             <p className="text-gray-600 text-lg">
               For $100 have all these videos instantly in your library.
             </p>
             <div className="space-y-3">
-              <Button
-                onClick={handleSignupRedirect}
-                className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
-              >
-                Sign Up Now & Get This Video!
-              </Button>
-              <p className="text-sm text-gray-500 mt-2">
-                Create an account and this video will be automatically added to
-                your library!
-              </p>
+              {!user ? (
+                // User not logged in - show signup button
+                <>
+                  <Button
+                    onClick={handleSignupRedirect}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+                  >
+                    Sign Up Now & Get This Video!
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Create an account and this video will be automatically added
+                    to your library!
+                  </p>
+                </>
+              ) : isCheckingOwnership ? (
+                // Checking ownership - show loading button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Checking...
+                </Button>
+              ) : isVideoOwner ? (
+                // User owns the video - show owned button
+                <Button
+                  disabled
+                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  Owned
+                </Button>
+              ) : isVideoImported ? (
+                // Video already imported - show imported button
+                <Button
+                  disabled
+                  className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
+                >
+                  ✓ Imported
+                </Button>
+              ) : (
+                // User logged in but doesn't own - show import button
+                <>
+                  <Button
+                    onClick={handleImportVideo}
+                    disabled={isCheckingImport}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3 disabled:bg-blue-400"
+                  >
+                    {isCheckingImport ? "Importing..." : "Import to Library"}
+                  </Button>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Add this video to your library in the 'sharedSeason' folder!
+                  </p>
+                </>
+              )}
               <Button
                 variant="outline"
                 className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"

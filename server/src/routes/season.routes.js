@@ -18,12 +18,14 @@ import {
   moveVideoToGame,
   moveGameToSeason,
   addSharedVideoToLibrary,
+  checkVideoOwnership,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
   uploadMultipleVideosToGame,
 } from "../controller/season.controller.js";
 import { singleUpload, multipleUpload } from "../middlewares/video.multer.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -79,5 +81,8 @@ router.put("/move-game/:gameId", moveGameToSeason);
 
 // Add shared video to user's library
 router.post("/add-shared-video-to-library", addSharedVideoToLibrary);
+
+// Check if user owns a video
+router.get("/check-video-ownership/:videoId", verifyJWT, checkVideoOwnership);
 
 export default router;
