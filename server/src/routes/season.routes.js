@@ -17,6 +17,7 @@ import {
   renameVideo,
   moveVideoToGame,
   moveGameToSeason,
+  addSharedVideoToLibrary,
 } from "../controller/season.controller.js";
 import {
   uploadVideoToGame,
@@ -75,5 +76,8 @@ router.put("/move-video/:videoId", moveVideoToGame);
 
 // move game to different season
 router.put("/move-game/:gameId", moveGameToSeason);
+
+// Add shared video to user's library
+router.post("/add-shared-video-to-library", addSharedVideoToLibrary);
 
 export default router;

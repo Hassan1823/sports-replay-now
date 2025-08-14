@@ -1465,3 +1465,104 @@ export const moveGameToSeason = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Add shared video to user's library
+export const addSharedVideoToLibrary = asyncHandler(async (req, res) => {
+  const { videoId, userId } = req.body;
+
+  if (!videoId || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: "Video ID and user ID are required",
+    });
+  }
+
+  try {
+    // Find the shared video
+    const sharedVideo = await Video.findById(videoId);
+    if (!sharedVideo) {
+      return res.status(404).json({
+        success: false,
+        message: "Shared video not found",
+      });
+    }
+
+    // Check if user already has a "sharedSeason" folder
+    let sharedSeason = await Season.findOne({
+      userId: userId,
+      name: "sharedSeason",
+    });
+
+    // If no sharedSeason exists, create one
+    if (!sharedSeason) {
+      sharedSeason = await Season.create({
+        name: "sharedSeason",
+        userId: userId,
+      });
+    }
+
+    // Check if user already has a "sharedGame" folder within sharedSeason
+    let sharedGame = await Game.findOne({
+      seasonId: sharedSeason._id,
+      name: "sharedGame",
+    });
+
+    // If no sharedGame exists, create one
+    if (!sharedGame) {
+      sharedGame = await Game.create({
+        name: "sharedGame",
+        seasonId: sharedSeason._id,
+      });
+
+      // Add the game to the season
+      await Season.findByIdAndUpdate(sharedSeason._id, {
+        $push: { games: sharedGame._id },
+      });
+    }
+
+    // Create a copy of the shared video for the user
+    const userVideo = await Video.create({
+      userId: userId,
+      peertubeVideoId: sharedVideo.peertubeVideoId,
+      videoShareLink: sharedVideo.videoShareLink,
+      embedIframeUrl: sharedVideo.embedIframeUrl,
+      videoDuration: sharedVideo.videoDuration,
+      videoChannel: sharedVideo.videoChannel,
+      videoThumbnail: sharedVideo.videoThumbnail,
+      fileUrl: sharedVideo.fileUrl,
+      peertubeChannelId: sharedVideo.peertubeChannelId,
+      title: sharedVideo.title,
+      description: sharedVideo.description,
+      filePath: sharedVideo.filePath,
+      duration: sharedVideo.duration,
+      thumbnailPath: sharedVideo.thumbnailPath,
+      privacy: sharedVideo.privacy,
+      category: sharedVideo.category,
+      license: sharedVideo.license,
+      muteVideo: sharedVideo.muteVideo,
+      tags: sharedVideo.tags,
+      uploadStatus: sharedVideo.uploadStatus,
+    });
+
+    // Add the video to the sharedGame
+    await Game.findByIdAndUpdate(sharedGame._id, {
+      $push: { videos: userVideo._id },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Shared video added to library successfully",
+      data: {
+        seasonId: sharedSeason._id,
+        gameId: sharedGame._id,
+        videoId: userVideo._id,
+      },
+    });
+  } catch (error) {
+    console.error("Add shared video to library error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add shared video to library",
+    });
+  }
+});

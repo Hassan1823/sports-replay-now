@@ -1,6 +1,7 @@
 "use client";
 
 import { registerUser } from "@/app/api/auth/api";
+import { addSharedVideoToLibrary } from "@/app/api/peertube/api";
 import Loading from "@/components/shared/loading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -54,6 +55,8 @@ export function SignUpForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sharedVideoId = searchParams.get("sharedVideoId");
   const { login, token } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -102,6 +105,24 @@ export function SignUpForm() {
         login(data.user);
         token(tokenData);
 
+        // If there's a shared video ID, add it to the user's library
+        if (sharedVideoId) {
+          try {
+            toast.loading("Adding shared video to your library...");
+            await addSharedVideoToLibrary(sharedVideoId, data.user._id);
+            toast.dismiss();
+            toast.success(
+              "Shared video added to your library! Check your 'sharedSeason' folder."
+            );
+          } catch (error) {
+            console.error("Failed to add shared video to library:", error);
+            toast.dismiss();
+            toast.error(
+              "Account created but failed to add video to library. You can manually add it later."
+            );
+          }
+        }
+
         router.push("/");
       } else {
         toast.error(
@@ -127,6 +148,17 @@ export function SignUpForm() {
     <div className="flex items-center justify-center min-h-[70vh] mb-[10vh]">
       <Card className="w-full max-w-[95%] md:max-w-[70%] lg:max-w-[50%] border-none shadow-none">
         <CardHeader>
+          {sharedVideoId && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+              <p className="text-green-800 text-sm font-medium">
+                🎥 You're signing up to get access to a shared video!
+              </p>
+              <p className="text-green-600 text-xs mt-1">
+                This video will be automatically added to your library after
+                signup.
+              </p>
+            </div>
+          )}
           <CardTitle className="text-4xl font-extrabold text-center">
             SIGN UP OR LOGIN
           </CardTitle>

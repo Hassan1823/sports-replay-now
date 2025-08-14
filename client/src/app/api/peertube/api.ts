@@ -430,3 +430,30 @@ export const moveGameToSeason = async (
     throw error;
   }
 };
+
+// Add shared video to user's library
+export const addSharedVideoToLibrary = async (
+  videoId: string,
+  userId: string
+): Promise<ApiResponse> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/seasons/add-shared-video-to-library`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId, userId }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        (await response.json()).message ||
+          "Failed to add shared video to library"
+      );
+    return await response.json();
+  } catch (error) {
+    console.error("Add shared video to library error:", error);
+    throw error;
+  }
+};

@@ -355,7 +355,13 @@ const ShareVideoPage = () => {
   };
 
   const handleSignupRedirect = () => {
-    window.location.href = "/login";
+    // Pass the video ID to the signup page
+    const videoId = searchParams.get("id");
+    if (videoId) {
+      window.location.href = `/signup?sharedVideoId=${videoId}`;
+    } else {
+      window.location.href = "/signup";
+    }
   };
 
   if (isLoading) {
@@ -631,8 +637,12 @@ const ShareVideoPage = () => {
                 onClick={handleSignupRedirect}
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
               >
-                Sign Up Now!
+                Sign Up Now & Get This Video!
               </Button>
+              <p className="text-sm text-gray-500 mt-2">
+                Create an account and this video will be automatically added to
+                your library!
+              </p>
               <Button
                 variant="outline"
                 className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"
