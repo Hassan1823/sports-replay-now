@@ -1662,7 +1662,9 @@ export function VideoPageMain() {
               size={"sm"}
               className="text-xs"
               onClick={addSeason}
-              disabled={loading || hasActiveUploads() || isTrimming()}
+              disabled={
+                loading || hasActiveUploads() || isTrimming() || editMode
+              }
             >
               <PlusIcon /> SEASON
             </Button>
@@ -1678,7 +1680,8 @@ export function VideoPageMain() {
                 !selectedSeasonId ||
                 loading ||
                 hasActiveUploads() ||
-                isTrimming()
+                isTrimming() ||
+                editMode
               }
             >
               <PlusIcon /> GAME
@@ -2537,7 +2540,10 @@ export function VideoPageMain() {
                 setShowLibrary(!showLibrary);
               }}
               disabled={
-                hasActiveUploads() || isTrimming() || deletingVideoId !== null
+                hasActiveUploads() ||
+                isTrimming() ||
+                deletingVideoId !== null ||
+                editMode
               }
             >
               LIBRARY
@@ -2551,7 +2557,8 @@ export function VideoPageMain() {
                 isTrimming() ||
                 deletingVideoId !== null ||
                 replacingVideo?.status === "uploading" ||
-                localTrimming
+                localTrimming ||
+                editMode
               }
             >
               <MenuIcon />
