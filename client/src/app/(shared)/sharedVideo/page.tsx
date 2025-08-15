@@ -680,7 +680,7 @@ const ShareVideoPage = () => {
               // Single video download content
               <>
                 <p className="text-gray-600 text-lg">
-                  Download this video to your device
+                  For $100 have all these videos instantly in your library.
                 </p>
                 <div className="space-y-3">
                   <Button
