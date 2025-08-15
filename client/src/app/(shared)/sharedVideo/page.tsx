@@ -294,56 +294,8 @@ const ShareVideoPage = () => {
   };
 
   const handleDownloadClick = async () => {
-    if (videoDetails?.fileUrl) {
-      try {
-        // Show loading toast that will persist until download completes
-        const toastId = toast.loading(
-          `Preparing download for ${videoDetails.name || "video"}...`
-        );
-
-        // Use fetch with blob to ensure download behavior
-        // This forces the browser to download instead of playing
-        const response = await fetch(videoDetails.fileUrl);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-
-        // Create download link with blob URL
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = `${videoDetails.name || "video"}.mp4`;
-
-        // Add the link to the DOM temporarily
-        document.body.appendChild(link);
-
-        // Trigger the click event
-        link.click();
-
-        // Remove the link from DOM
-        document.body.removeChild(link);
-
-        // Clean up the blob URL after a short delay
-        setTimeout(() => {
-          window.URL.revokeObjectURL(blobUrl);
-        }, 1000);
-
-        // Dismiss the loading toast and show success message
-        toast.dismiss(toastId);
-        toast.success(`Download started for ${videoDetails.name || "video"}`);
-      } catch (error) {
-        console.error("Download error:", error);
-        // Dismiss loading toast and show error
-        toast.error("Download failed. Please try again.");
-        // Fallback to modal if download fails
-        setShowDownloadModal(true);
-      }
-    } else {
-      // Fallback to modal if no direct download URL
-      setShowDownloadModal(true);
-    }
+    // Always show the modal instead of trying to download directly
+    setShowDownloadModal(true);
   };
 
   // Function to download all videos (for shared video, this downloads the single video)
