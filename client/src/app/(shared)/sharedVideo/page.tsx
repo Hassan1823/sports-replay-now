@@ -62,6 +62,9 @@ const ShareVideoPage = () => {
   const [isCheckingOwnership, setIsCheckingOwnership] = useState(false);
   const [isVideoImported, setIsVideoImported] = useState(false);
   const [isCheckingImport, setIsCheckingImport] = useState(false);
+  const [downloadType, setDownloadType] = useState<"all" | "single" | null>(
+    null
+  );
 
   // * getting video details
   const fetchVideoDetails = async (shareVideoId: string) => {
@@ -294,7 +297,8 @@ const ShareVideoPage = () => {
   };
 
   const handleDownloadClick = async () => {
-    // Always show the modal instead of trying to download directly
+    // Set download type to single video and show the modal
+    setDownloadType("single");
     setShowDownloadModal(true);
   };
 
@@ -311,6 +315,7 @@ const ShareVideoPage = () => {
 
       // Close the modal
       setShowDownloadModal(false);
+      setDownloadType(null);
 
       // Update toast to show download progress
       toast.loading(`Downloading ${videoDetails.name || "video"}...`, {
@@ -375,6 +380,7 @@ const ShareVideoPage = () => {
       );
       setIsVideoImported(true);
       setShowDownloadModal(false);
+      setDownloadType(null);
     } catch (error) {
       console.error("Failed to import video:", error);
       toast.dismiss();
@@ -608,7 +614,10 @@ const ShareVideoPage = () => {
                   <h2 className="text-lg font-semibold bg-[#858585]">Video</h2>
                   <Download
                     className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white p-1 rounded cursor-pointer transition-colors"
-                    onClick={() => setShowDownloadModal(true)}
+                    onClick={() => {
+                      setDownloadType("all");
+                      setShowDownloadModal(true);
+                    }}
                   />
                 </div>
                 <CardContent className="p-0">
@@ -651,74 +660,139 @@ const ShareVideoPage = () => {
       </div>
 
       {/* Download Modal */}
-      <Dialog open={showDownloadModal} onOpenChange={setShowDownloadModal}>
+      <Dialog
+        open={showDownloadModal}
+        onOpenChange={(open) => {
+          setShowDownloadModal(open);
+          if (!open) {
+            setDownloadType(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-center text-xl font-bold text-gray-800">
-              Why Download?
+              {downloadType === "single" ? "Download Video" : "Why Download?"}
             </DialogTitle>
           </DialogHeader>
           <div className="text-center space-y-4">
-            {/* User Status Header */}
-
-            <p className="text-gray-600 text-lg">
-              For $100 have all these videos instantly in your library.
-            </p>
-            <div className="space-y-3">
-              {!user ? (
-                // User not logged in - show signup button
-                <>
+            {downloadType === "single" ? (
+              // Single video download content
+              <>
+                <p className="text-gray-600 text-lg">
+                  Download this video to your device
+                </p>
+                <div className="space-y-3">
                   <Button
-                    onClick={handleSignupRedirect}
+                    onClick={handleDownloadAllVideos}
                     className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
                   >
-                    Sign Up Now
+                    Download Video
                   </Button>
-                </>
-              ) : isCheckingOwnership ? (
-                // Checking ownership - show loading button
-                <Button
-                  disabled
-                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
-                >
-                  Checking...
-                </Button>
-              ) : isVideoOwner ? (
-                // User owns the video - show owned button
-                <Button
-                  disabled
-                  className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
-                >
-                  Owned
-                </Button>
-              ) : isVideoImported ? (
-                // Video already imported - show imported button
-                <Button
-                  disabled
-                  className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
-                >
-                  ✓ Imported
-                </Button>
-              ) : (
-                // User logged in but doesn't own - show import button
-                <>
+                  {!user ? (
+                    <Button
+                      onClick={handleSignupRedirect}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-lg py-3"
+                    >
+                      Sign Up Now
+                    </Button>
+                  ) : isCheckingOwnership ? (
+                    <Button
+                      disabled
+                      className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      Checking...
+                    </Button>
+                  ) : isVideoOwner ? (
+                    <Button
+                      disabled
+                      className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      Owned
+                    </Button>
+                  ) : isVideoImported ? (
+                    <Button
+                      disabled
+                      className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      ✓ Imported
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleImportVideo}
+                      disabled={isCheckingImport}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
+                    >
+                      {isCheckingImport ? "Importing..." : "Import to Library"}
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              // All videos download content (existing logic)
+              <>
+                <p className="text-gray-600 text-lg">
+                  For $100 have all these videos instantly in your library.
+                </p>
+                <div className="space-y-3">
+                  {!user ? (
+                    // User not logged in - show signup button
+                    <>
+                      <Button
+                        onClick={handleSignupRedirect}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3"
+                      >
+                        Sign Up Now
+                      </Button>
+                    </>
+                  ) : isCheckingOwnership ? (
+                    // Checking ownership - show loading button
+                    <Button
+                      disabled
+                      className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      Checking...
+                    </Button>
+                  ) : isVideoOwner ? (
+                    // User owns the video - show owned button
+                    <Button
+                      disabled
+                      className="w-full bg-gray-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      Owned
+                    </Button>
+                  ) : isVideoImported ? (
+                    // Video already imported - show imported button
+                    <Button
+                      disabled
+                      className="w-full bg-green-400 text-white text-lg py-3 cursor-not-allowed"
+                    >
+                      ✓ Imported
+                    </Button>
+                  ) : (
+                    // User logged in but doesn't own - show import button
+                    <>
+                      <Button
+                        onClick={handleImportVideo}
+                        disabled={isCheckingImport}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
+                      >
+                        {isCheckingImport
+                          ? "Importing..."
+                          : "Import to Library"}
+                      </Button>
+                    </>
+                  )}
                   <Button
-                    onClick={handleImportVideo}
-                    disabled={isCheckingImport}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-3 disabled:bg-green-400"
+                    variant="outline"
+                    className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"
+                    onClick={handleDownloadAllVideos}
                   >
-                    {isCheckingImport ? "Importing..." : "Import to Library"}
+                    Download
                   </Button>
-                </>
-              )}
-              <Button
-                variant="outline"
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 text-lg py-3"
-                onClick={handleDownloadAllVideos}
-              >
-                Download
-              </Button>
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
