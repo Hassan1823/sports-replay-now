@@ -67,6 +67,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem("refreshToken");
   };
 
+  const refreshUser = async (): Promise<void> => {
+    try {
+      if (!user?._id) return;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/users/${user._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const updatedUser = await response.json();
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data", error);
+    }
+  };
+
+  const updateUserStripeStatus = (status: string): void => {
+    if (user) {
+      const updatedUser = { ...user, stripePaymentStatus: status };
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -75,6 +106,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     token,
     login,
     logout,
+    refreshUser,
+    updateUserStripeStatus,
     isAuthenticated: !!user,
   };
 

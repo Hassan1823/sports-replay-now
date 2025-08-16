@@ -4,6 +4,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { generateAccessAndRefreshTokens } from "./user.controller.js";
 import { createPeerTubeAccount } from "./peertube.controller.js";
 import { Peertube } from "../models/peertube.model.js";
+
 // * saving payment details
 const paymentDetails = asyncHandler(async (req, res) => {
   try {
@@ -158,5 +159,57 @@ const paymentDetails = asyncHandler(async (req, res) => {
   }
 });
 
+// * cancel subscription
+const cancelSubscription = asyncHandler(async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required!",
+      });
+    }
+
+    // Find the user and their payment details
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+
+    const payment = await Payment.findOne({ userId });
+    if (!payment) {
+      return res.status(400).json({
+        success: false,
+        message: "No payment details found!",
+      });
+    }
+
+    // Update payment status to canceled
+    await Payment.findByIdAndUpdate(payment._id, {
+      stripePaymentStatus: "canceled",
+    });
+
+    // Update user payment status
+    await User.findByIdAndUpdate(userId, {
+      stripePaymentStatus: "canceled",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Subscription cancelled successfully.",
+    });
+  } catch (error) {
+    console.log("🚀 ~ cancelSubscription ~ error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+});
+
 // * exports
-export { paymentDetails };
+export { paymentDetails, cancelSubscription };

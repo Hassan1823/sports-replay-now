@@ -44,6 +44,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import Loading from "../shared/loading";
@@ -152,7 +153,8 @@ export function VideoPageMain() {
   const hlsInstance = useRef<Hls | null>(null);
   // Ref to track the original upload target for conditional refresh
   const uploadingGameIdRef = useRef<string | null>(null);
-  const { refreshToken, user, logout } = useAuth();
+  const { refreshToken, user, logout, updateUserStripeStatus } = useAuth();
+  const router = useRouter();
 
   // Helper function to clean up video playback state
   const cleanupVideoPlayback = (clearSelections = true) => {
@@ -975,6 +977,7 @@ export function VideoPageMain() {
   // Upload modal states
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadModalDismissed, setUploadModalDismissed] = useState(false);
+  const [isCancelingSubscription, setIsCancelingSubscription] = useState(false);
 
   // Helper function to check if there are any active uploads
   const hasActiveUploads = () => {
@@ -1640,6 +1643,42 @@ export function VideoPageMain() {
       toast.dismiss("video-processing");
       toast.dismiss(trimToastId);
       toast.error(`Failed to replace video: ${errorMessage}`);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user?._id) {
+      toast.error("User not found. Please log in again.");
+      return;
+    }
+
+    setIsCancelingSubscription(true);
+
+    try {
+      const response = await fetch("/api/cancel-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user._id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(data.message || "Subscription cancelled successfully");
+        // Update user's stripe status locally to reflect the change
+        updateUserStripeStatus("canceled");
+        // Redirect to plans page
+        router.push("/plans");
+      } else {
+        toast.error(data.message || "Failed to cancel subscription");
+      }
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      toast.error("An error occurred while cancelling your subscription");
+    } finally {
+      setIsCancelingSubscription(false);
     }
   };
 
@@ -2825,8 +2864,10 @@ export function VideoPageMain() {
             <Button
               variant="outline"
               className="w-full mb-4 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 hover:text-red-700"
+              onClick={handleCancelSubscription}
+              disabled={isCancelingSubscription}
             >
-              Cancel Plan
+              {isCancelingSubscription ? "Canceling..." : "Cancel Plan"}
             </Button>
 
             {refreshToken ? (

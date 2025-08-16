@@ -28,4 +28,6 @@ export interface AuthContextType {
   login: (userData: User) => Promise<void>;
   token: (tokenData: Token) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
+  updateUserStripeStatus: (status: string) => void;
 }
