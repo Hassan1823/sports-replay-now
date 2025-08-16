@@ -2813,6 +2813,22 @@ export function VideoPageMain() {
             </Button>
           </div>
           <div className="flex-1 flex flex-col justify-end p-4">
+            {/* Contact Email */}
+            <div className="text-center mb-4">
+              <p className="text-sm text-gray-600">Contact us at:</p>
+              <p className="text-sm font-medium text-black">
+                contact@sportsreplaynow.com
+              </p>
+            </div>
+
+            {/* Cancel Plan Button */}
+            <Button
+              variant="outline"
+              className="w-full mb-4 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 hover:text-red-700"
+            >
+              Cancel Plan
+            </Button>
+
             {refreshToken ? (
               <Button
                 className="w-full h-auto p-[2%] rounded-full"
