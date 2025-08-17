@@ -225,7 +225,7 @@ export const uploadVideoToGame = asyncHandler(async (req, res) => {
 
     // Compose full URLs for previewPath and thumbnailPath
     const peertubeBaseUrl =
-      process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
+      process.env.PEERTUBE_INSTANCE_URL || "https://video.sportsreplaynow.com";
     const previewPath = peertubeVideoDetails.previewPath
       ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.previewPath
       : null;
@@ -472,7 +472,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
 
     // Compose full URLs for previewPath and thumbnailPath
     const peertubeBaseUrl =
-      process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
+      process.env.PEERTUBE_INSTANCE_URL || "https://video.sportsreplaynow.com";
     const previewPath = peertubeVideoDetails.previewPath
       ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.previewPath
       : null;
@@ -650,7 +650,7 @@ export const updateVideoFile = asyncHandler(async (req, res) => {
 
 //   // Compose full URLs for previewPath and thumbnailPath
 //   const peertubeBaseUrl =
-//     process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games";
+//     process.env.PEERTUBE_INSTANCE_URL || "https://video.sportsreplaynow.com";
 //   const previewPath = peertubeVideoDetails.previewPath
 //     ? peertubeBaseUrl.replace(/\/$/, "") + peertubeVideoDetails.previewPath
 //     : null;
@@ -817,7 +817,7 @@ export const uploadMultipleVideosToGame = asyncHandler(async (req, res) => {
       license,
       tags: tags ? tags.split(",").map((t) => t.trim()) : [],
       uploadStatus: "published",
-      embedIframeUrl: `${process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games"}/videos/embed/${uploadResponse.data.video.uuid}`,
+      embedIframeUrl: `${process.env.PEERTUBE_INSTANCE_URL || "https://video.sportsreplaynow.com"}/videos/embed/${uploadResponse.data.video.uuid}`,
     });
 
     // Add video to game

@@ -34,7 +34,7 @@ const updateExistingVideos = async () => {
       try {
         const peertubeBaseUrl =
           process.env.PEERTUBE_INSTANCE_URL ||
-          "https://video.visiononline.games";
+          "https://video.sportsreplaynow.com";
 
         // We need to get the UUID from PeerTube API or construct it from existing data
         // For now, we'll construct it using the peertubeVideoId as a fallback

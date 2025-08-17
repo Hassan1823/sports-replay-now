@@ -1081,7 +1081,7 @@ const uploadVideoToPeerTube = asyncHandler(async (req, res) => {
       license: req.body.license || 1,
       tags: req.body.tags ? req.body.tags.split(",").map((t) => t.trim()) : [],
       uploadStatus: "published",
-      embedIframeUrl: `${process.env.PEERTUBE_INSTANCE_URL || "https://video.visiononline.games"}/videos/embed/${uploadResponse.data.video.uuid}`,
+      embedIframeUrl: `${process.env.PEERTUBE_INSTANCE_URL || "https://video.sportsreplaynow.com"}/videos/embed/${uploadResponse.data.video.uuid}`,
     });
 
     // Clean up
